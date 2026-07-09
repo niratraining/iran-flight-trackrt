@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تابلوی پرواز | تحلیل تاخیر ایرلاین‌های ایران</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0d12;
+    --panel: #12161f;
+    --panel-raised: #171c27;
+    --amber: #ffb000;
+    --amber-dim: #8a6104;
+    --cyan: #35c9c1;
+    --coral: #ff5a5f;
+    --grey-mist: #8b93a7;
+    --hairline: #232935;
+    --split-shadow: rgba(0,0,0,0.55);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: #e7e9ee;
+    font-family: 'Vazirmatn', sans-serif;
+    min-height: 100vh;
+  }
+
+  .mono { font-family: 'Space Mono', monospace; }
+
+  /* ---------- HERO ---------- */
+  .hero {
+    padding: 48px 24px 32px;
+    border-bottom: 1px solid var(--hairline);
+    background:
+      radial-gradient(ellipse at top left, rgba(255,176,0,0.06), transparent 60%),
+      var(--bg);
+  }
+
+  .hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto 28px;
+  }
+
+  .eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    color: var(--amber);
+    text-transform: uppercase;
+    margin: 0 0 10px;
+  }
+
+  h1 {
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 800;
+    margin: 0;
+    line-height: 1.25;
+  }
+
+  .subtitle {
+    color: var(--grey-mist);
+    font-size: 15px;
+    margin-top: 10px;
+    max-width: 560px;
+    line-height: 1.8;
+  }
+
+  .clock-box {
+    font-family: 'Space Mono', monospace;
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 14px 20px;
+    text-align: center;
+    min-width: 180px;
+  }
+  .clock-box .label { font-size: 11px; color: var(--grey-mist); letter-spacing: 0.1em; }
+  .clock-box .time { font-size: 22px; color: var(--amber); margin-top: 4px; }
+
+  /* ---------- SPLIT-FLAP SUMMARY ---------- */
+  .flap-row {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+  }
+
+  .flap {
+    background: linear-gradient(180deg, var(--panel-raised), var(--panel));
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 18px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .flap::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; top: 50%;
+    height: 1px;
+    background: var(--split-shadow);
+  }
+  .flap .flap-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--amber);
+  }
+  .flap.on-time .flap-value { color: var(--cyan); }
+  .flap.delayed .flap-value { color: #ffcf5c; }
+  .flap.cancelled .flap-value { color: var(--coral); }
+  .flap .flap-label {
+    font-size: 12px;
+    color: var(--grey-mist);
+    margin-top: 6px;
+  }
+
+  /* ---------- MAIN ---------- */
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 36px 24px 80px;
+  }
+
+  section { margin-bottom: 48px; }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .section-head h2 {
+    font-size: 19px;
+    margin: 0;
+    font-weight: 700;
+  }
+  .section-head .hint {
+    font-size: 12px;
+    color: var(--grey-mist);
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* filters */
+  .filters {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .filters select, .filters input {
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    color: #e7e9ee;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: 'Vazirmatn', sans-serif;
+    font-size: 13px;
+  }
+  .filters input { flex: 1; min-width: 160px; }
+
+  /* board table */
+  .board {
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: right;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--grey-mist);
+    text-transform: uppercase;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--hairline);
+    background: var(--panel-raised);
+    position: sticky;
+    top: 0;
+  }
+  tbody td {
+    padding: 12px 14px;
+    font-size: 13.5px;
+    border-bottom: 1px solid var(--hairline);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,176,0,0.04); }
+
+  .mono-cell { font-family: 'Space Mono', monospace; }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+  .badge.on-time { background: rgba(53,201,193,0.14); color: var(--cyan); }
+  .badge.delayed { background: rgba(255,207,92,0.14); color: #ffcf5c; }
+  .badge.cancelled { background: rgba(255,90,95,0.14); color: var(--coral); }
+  .badge.unknown { background: rgba(139,147,167,0.14); color: var(--grey-mist); }
+
+  .table-scroll { max-height: 560px; overflow: auto; }
+
+  /* airline performance */
+  .airline-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 860px) { .airline-grid { grid-template-columns: 1fr; } }
+
+  .chart-card {
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .chart-card h3 {
+    font-size: 13px;
+    color: var(--grey-mist);
+    margin: 0 0 14px;
+    font-weight: 600;
+  }
+
+  .airline-list { display: flex; flex-direction: column; gap: 10px; }
+  .airline-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--panel-raised);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+  .airline-row .name { flex: 1; font-size: 13.5px; font-weight: 600; }
+  .airline-row .stat { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--grey-mist); min-width: 70px; text-align: left; }
+  .airline-row .stat.good { color: var(--cyan); }
+  .airline-row .stat.bad { color: var(--coral); }
+
+  .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--grey-mist);
+  }
+  .empty-state .big { font-family: 'Space Mono', monospace; font-size: 15px; color: var(--amber); margin-bottom: 8px; }
+
+  footer {
+    text-align: center;
+    color: var(--grey-mist);
+    font-size: 12px;
+    padding: 20px;
+    border-top: 1px solid var(--hairline);
+    font-family: 'Space Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-top">
+    <div>
+      <p class="eyebrow">FIDS · تحلیل عملکرد پروازی</p>
+      <h1>تابلوی پرواز مهرآباد و امام خمینی</h1>
+      <p class="subtitle">وضعیت به‌روز پروازها، تاخیرها و لغوها، جمع‌آوری‌شده از داده‌های زنده فرودگاهی برای تحلیل عملکرد ایرلاین‌ها.</p>
+    </div>
+    <div class="clock-box">
+      <div class="label">آخرین به‌روزرسانی</div>
+      <div class="time mono" id="updatedAt">—</div>
+    </div>
+  </div>
+
+  <div class="flap-row" id="summaryFlaps">
+    <div class="flap"><div class="flap-value mono" id="flapTotal">—</div><div class="flap-label">کل پروازهای رصدشده</div></div>
+    <div class="flap on-time"><div class="flap-value mono" id="flapOnTime">—</div><div class="flap-label">به‌موقع</div></div>
+    <div class="flap delayed"><div class="flap-value mono" id="flapDelayed">—</div><div class="flap-label">تاخیردار</div></div>
+    <div class="flap cancelled"><div class="flap-value mono" id="flapCancelled">—</div><div class="flap-label">لغوشده</div></div>
+  </div>
+</div>
+
+<main>
+
+  <section>
+    <div class="section-head">
+      <h2>جدول پروازها</h2>
+      <span class="hint" id="rowCount">—</span>
+    </div>
+
+    <div class="filters">
+      <select id="filterAirport">
+        <option value="">همه فرودگاه‌ها</option>
+        <option value="THR">مهرآباد (THR)</option>
+        <option value="IKA">امام خمینی (IKA)</option>
+      </select>
+      <select id="filterStatus">
+        <option value="">همه وضعیت‌ها</option>
+        <option value="on-time">به‌موقع</option>
+        <option value="delayed">تاخیردار</option>
+        <option value="cancelled">لغوشده</option>
+      </select>
+      <input type="text" id="filterSearch" placeholder="جستجو: مقصد، ایرلاین یا شماره پرواز…">
+    </div>
+
+    <div class="board">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>تاریخ</th>
+              <th>روز</th>
+              <th>ساعت برنامه‌ریزی‌شده</th>
+              <th>مسیر</th>
+              <th>ایرلاین</th>
+              <th>شماره پرواز</th>
+              <th>تاخیر</th>
+              <th>وضعیت</th>
+            </tr>
+          </thead>
+          <tbody id="flightTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>عملکرد ایرلاین‌ها</h2>
+      <span class="hint">میانگین تاخیر و نرخ به‌موقع بودن</span>
+    </div>
+
+    <div class="airline-grid">
+      <div class="chart-card">
+        <h3>میانگین تاخیر (دقیقه) به تفکیک ایرلاین</h3>
+        <canvas id="delayChart" height="260"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>نرخ به‌موقع بودن</h3>
+        <div class="airline-list" id="airlineList"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>iran-flight-trackrt.workers.dev/api/flights &middot; تازه‌سازی خودکار هر ۲۴ ساعت</footer>
+
+<script>
+// ==================================================================
+// تنظیمات: آدرس API ورکر خودت رو اینجا بذار
+// ==================================================================
+const API_URL = 'https://iran-flight-trackrt.nirahelp.workers.dev/api/flights';
+// ==================================================================
+
+const WEEKDAYS_FA = ['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'];
+
+let allFlights = [];
+let delayChartInstance = null;
+
+function classify(f) {
+  if (f.status === 'cancelled') return 'cancelled';
+  const delay = Math.max(f.dep_delay || 0, f.arr_delay || 0);
+  if (delay >= 15) return 'delayed';
+  if (f.status === 'landed' || f.status === 'active' || f.status === 'scheduled') return 'on-time';
+  return 'unknown';
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('fa-IR');
+}
+function fmtTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  return d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+}
+function fmtWeekday(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  return WEEKDAYS_FA[d.getDay()];
+}
+
+function statusBadge(cls) {
+  const label = { 'on-time': 'به‌موقع', 'delayed': 'تاخیردار', 'cancelled': 'لغوشده', 'unknown': 'نامشخص' }[cls];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function renderTable(flights) {
+  const tbody = document.getElementById('flightTableBody');
+  document.getElementById('rowCount').textContent = `${flights.length.toLocaleString('fa-IR')} پرواز`;
+
+  if (flights.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="big">هیچ پروازی یافت نشد</div>فیلترها را تغییر دهید یا منتظر جمع‌آوری داده بیشتر بمانید.</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = flights.map(f => {
+    const cls = classify(f);
+    const delay = Math.max(f.dep_delay || 0, f.arr_delay || 0);
+    return `
+      <tr>
+        <td class="mono-cell">${fmtDate(f.dep_scheduled)}</td>
+        <td>${fmtWeekday(f.dep_scheduled)}</td>
+        <td class="mono-cell">${fmtTime(f.dep_scheduled)}</td>
+        <td>${f.dep_iata} → ${f.arr_iata}</td>
+        <td>${f.airline}</td>
+        <td class="mono-cell">${f.flight_iata || '—'}</td>
+        <td class="mono-cell">${delay ? delay + ' دقیقه' : '—'}</td>
+        <td>${statusBadge(cls)}</td>
+      </tr>`;
+  }).join('');
+}
+
+function renderSummary(flights) {
+  const total = flights.length;
+  const onTime = flights.filter(f => classify(f) === 'on-time').length;
+  const delayed = flights.filter(f => classify(f) === 'delayed').length;
+  const cancelled = flights.filter(f => classify(f) === 'cancelled').length;
+
+  document.getElementById('flapTotal').textContent = total.toLocaleString('fa-IR');
+  document.getElementById('flapOnTime').textContent = onTime.toLocaleString('fa-IR');
+  document.getElementById('flapDelayed').textContent = delayed.toLocaleString('fa-IR');
+  document.getElementById('flapCancelled').textContent = cancelled.toLocaleString('fa-IR');
+}
+
+function renderAirlinePerformance(flights) {
+  const byAirline = {};
+  flights.forEach(f => {
+    const name = f.airline || 'Unknown';
+    if (!byAirline[name]) byAirline[name] = { total: 0, onTime: 0, delaySum: 0, delayCount: 0 };
+    byAirline[name].total++;
+    const cls = classify(f);
+    if (cls === 'on-time') byAirline[name].onTime++;
+    const delay = Math.max(f.dep_delay || 0, f.arr_delay || 0);
+    if (delay) { byAirline[name].delaySum += delay; byAirline[name].delayCount++; }
+  });
+
+  const airlines = Object.keys(byAirline)
+    .map(name => ({
+      name,
+      total: byAirline[name].total,
+      onTimeRate: byAirline[name].total ? (byAirline[name].onTime / byAirline[name].total * 100) : 0,
+      avgDelay: byAirline[name].delayCount ? (byAirline[name].delaySum / byAirline[name].delayCount) : 0
+    }))
+    .filter(a => a.total >= 1)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 12);
+
+  // bar chart: avg delay
+  const ctx = document.getElementById('delayChart').getContext('2d');
+  if (delayChartInstance) delayChartInstance.destroy();
+  delayChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: airlines.map(a => a.name),
+      datasets: [{
+        data: airlines.map(a => Math.round(a.avgDelay)),
+        backgroundColor: airlines.map(a => a.avgDelay >= 15 ? '#ff5a5f' : '#35c9c1'),
+        borderRadius: 4,
+        maxBarThickness: 22
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8b93a7' }, grid: { color: '#232935' } },
+        y: { ticks: { color: '#e7e9ee', font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  // on-time rate list
+  const list = document.getElementById('airlineList');
+  const sortedByRate = [...airlines].sort((a, b) => b.onTimeRate - a.onTimeRate);
+  list.innerHTML = sortedByRate.map(a => `
+    <div class="airline-row">
+      <div class="name">${a.name}</div>
+      <div class="stat ${a.onTimeRate >= 70 ? 'good' : a.onTimeRate < 40 ? 'bad' : ''}">${a.onTimeRate.toFixed(0)}٪ به‌موقع</div>
+    </div>
+  `).join('');
+}
+
+function applyFilters() {
+  const airport = document.getElementById('filterAirport').value;
+  const status = document.getElementById('filterStatus').value;
+  const search = document.getElementById('filterSearch').value.trim().toLowerCase();
+
+  let filtered = allFlights;
+  if (airport) filtered = filtered.filter(f => f.dep_iata === airport);
+  if (status) filtered = filtered.filter(f => classify(f) === status);
+  if (search) {
+    filtered = filtered.filter(f =>
+      (f.arr_iata || '').toLowerCase().includes(search) ||
+      (f.airline || '').toLowerCase().includes(search) ||
+      (f.flight_iata || '').toLowerCase().includes(search)
+    );
+  }
+  renderTable(filtered);
+}
+
+['filterAirport', 'filterStatus'].forEach(id =>
+  document.getElementById(id).addEventListener('change', applyFilters)
+);
+document.getElementById('filterSearch').addEventListener('input', applyFilters);
+
+async function loadData() {
+  try {
+    const res = await fetch(API_URL);
+    const json = await res.json();
+    allFlights = json.flights || [];
+
+    document.getElementById('updatedAt').textContent = new Date(json.updated_at).toLocaleString('fa-IR');
+    renderSummary(allFlights);
+    renderAirlinePerformance(allFlights);
+    applyFilters();
+  } catch (err) {
+    document.getElementById('flightTableBody').innerHTML =
+      `<tr><td colspan="8"><div class="empty-state"><div class="big">خطا در اتصال به API</div>آدرس API_URL را در کد بررسی کنید. جزئیات: ${err.message}</div></td></tr>`;
+  }
+}
+
+loadData();
+</script>
+</body>
+</html>
