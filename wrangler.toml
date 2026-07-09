@@ -1,4 +1,4 @@
-name = "iran-flight-trackrt"
+name = "iran-flight-trackrt-dashboard"
 main = "worker.js"
 compatibility_date = "2026-07-01"
 
