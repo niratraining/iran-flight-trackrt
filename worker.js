@@ -88,6 +88,9 @@ async function trackAll(env) {
       await env.FLIGHTS_KV.put(`error_${airport}_${now}`, String(err));
     }
   }
+
+  // زمان واقعی آخرین جمع‌آوری رو جدا ذخیره می‌کنیم
+  await env.FLIGHTS_KV.put('last_run', now);
 }
 
 async function getAllFlights(env) {
@@ -140,8 +143,10 @@ async function getAllFlights(env) {
     }
   }
 
+  const lastRun = await env.FLIGHTS_KV.get('last_run');
+
   return {
-    updated_at: new Date().toISOString(),
+    updated_at: lastRun || new Date().toISOString(),
     count: latestByFlight.size,
     flights: Array.from(latestByFlight.values())
   };
