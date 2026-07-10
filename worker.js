@@ -614,10 +614,18 @@ async function updateRollingScores(env) {
         last_updated: new Date().toISOString()
       };
     } else {
+      // نرخ به‌موقع بودن (OTP) فقط روی پروازهایی حساب می‌شود که واقعاً پرواز کرده‌اند —
+      // لغوشده‌ها از مخرج کسر می‌شوند. این هماهنگ با متدولوژی US DOT Air Travel
+      // Consumer Report و OAG/Cirium است: On-Time Performance و Cancellation Rate
+      // (Completion Factor) دو شاخص مستقل‌اند، نه یک کسر ادغام‌شده. در غیر این صورت
+      // یک ایرلاین با ۴ پرواز به‌موقع از ۴ پرواز انجام‌شده و ۶ لغو، به‌جای ۱۰۰٪ می‌شود ۴۰٪.
+      const completed = total - cancelled;
       value = {
-        score_percent: Math.round((onTime / total) * 1000) / 10,
+        score_percent: completed > 0 ? Math.round((onTime / completed) * 1000) / 10 : null,
+        all_cancelled: completed === 0,
         avg_delay_minutes: delaySamples > 0 ? Math.round((delaySum / delaySamples) * 10) / 10 : 0,
         cancellation_rate: Math.round((cancelled / total) * 1000) / 10,
+        completed_flights: completed,
         sample_size: total,
         window_days: windowDays,
         last_updated: new Date().toISOString()
