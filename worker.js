@@ -8,6 +8,25 @@ const ALLOWED_ORIGINS = [
   'https://flight-track.travellab.ir'
 ];
 
+// This worker's own public URL. /api/flights and /api/leaderboard are edge-
+// cached (see fetch handler below) with a long max-age, since the underlying
+// data only actually changes once a night (or on a manual /api/refresh) —
+// there's no point re-hitting KV on every visitor. That only works if we
+// explicitly purge those two cache entries right after the data changes,
+// which is what purgeDataCaches() does. The scheduled (cron) handler has no
+// incoming request to read an origin from, so it needs this hardcoded;
+// /api/refresh instead derives the origin from the real request, so it still
+// works correctly if this worker is ever moved to a different domain.
+const WORKER_ORIGIN = 'https://iran-flight-trackrt.nirahelp.workers.dev';
+
+async function purgeDataCaches(origin) {
+  const cache = caches.default;
+  await Promise.all([
+    cache.delete(new Request(`${origin}/api/flights`)),
+    cache.delete(new Request(`${origin}/api/leaderboard`))
+  ]);
+}
+
 // The real value of REFRESH_SECRET must only be set in Cloudflare Secrets
 // (Settings > Variables and Secrets > Add > Type: Secret > Name: REFRESH_SECRET)
 // Never hardcode it here or commit it to git.
@@ -83,7 +102,7 @@ export default {
       await trackAirports(env, ALL_AIRPORTS.map(a => a.iata));
 
       const today = tehranDateStr(new Date());
-      await aggregateDailyStats(env, today);
+      const { byAirlineToday } = await aggregateDailyStats(env, today);
 
       // Route classification (busy/quiet) only needs to run weekly — it's a
       // heavier full-scan operation. Monday in Tehran local time.
@@ -93,7 +112,8 @@ export default {
       }
 
       await updateRollingScores(env);
-      await updateLeaderboardStats(env);
+      await updateLeaderboardStats(env, today, byAirlineToday);
+      await purgeDataCaches(WORKER_ORIGIN);
       return;
     }
 
@@ -120,7 +140,12 @@ export default {
         const response = new Response(JSON.stringify(data), {
           headers: {
             'content-type': 'application/json',
-            'Cache-Control': 'public, max-age=300',
+            // Data only actually changes once a night or on a manual
+            // /api/refresh, and both of those now explicitly purge this
+            // cache entry (see purgeDataCaches). So this max-age is really
+            // just a safety ceiling, not the thing that decides freshness —
+            // it can be long without users ever seeing day-old data.
+            'Cache-Control': 'public, max-age=86400',
             ...corsHeaders(request)
           }
         });
@@ -175,9 +200,10 @@ export default {
           });
         }
         const results = await trackAirports(env, [airportParam]);
-        await aggregateDailyStats(env, today);
+        const { byAirlineToday: byAirlineToday1 } = await aggregateDailyStats(env, today);
         await updateRollingScores(env);
-        await updateLeaderboardStats(env);
+        await updateLeaderboardStats(env, today, byAirlineToday1);
+        await purgeDataCaches(new URL(request.url).origin);
         return new Response(JSON.stringify({ status: 'refreshed', airport: airportParam, results }), {
           headers: { 'content-type': 'application/json', ...corsHeaders(request) }
         });
@@ -185,9 +211,10 @@ export default {
 
       // No airport param -> refresh all 20 airports
       const results = await trackAirports(env, ALL_AIRPORTS.map(a => a.iata));
-      await aggregateDailyStats(env, today);
+      const { byAirlineToday: byAirlineToday2 } = await aggregateDailyStats(env, today);
       await updateRollingScores(env);
-      await updateLeaderboardStats(env);
+      await updateLeaderboardStats(env, today, byAirlineToday2);
+      await purgeDataCaches(new URL(request.url).origin);
       return new Response(JSON.stringify({ status: 'refreshed', airports: 'all', results }), {
         headers: { 'content-type': 'application/json', ...corsHeaders(request) }
       });
@@ -233,7 +260,9 @@ export default {
       const response = new Response(JSON.stringify(data), {
         headers: {
           'content-type': 'application/json',
-          'Cache-Control': 'public, max-age=1800',
+          // Same reasoning as /api/flights above: purged explicitly on every
+          // real update, so this is a ceiling, not the freshness mechanism.
+          'Cache-Control': 'public, max-age=86400',
           ...corsHeaders(request)
         }
       });
@@ -589,6 +618,13 @@ async function aggregateDailyStats(env, date) {
   } while (cursor);
 
   const puts = [];
+  // Also fold today's numbers into a per-airline (with per-route breakdown)
+  // shape as we go — this is exactly the structure updateLeaderboardStats
+  // needs, built here for free from data already in memory. Handing it
+  // straight to updateLeaderboardStats means the leaderboard no longer has
+  // to re-list()+get() the entire daily_stats:* history every night to
+  // pick today's slice back out again (see updateLeaderboardStats below).
+  const byAirlineToday = new Map();
   for (const [groupKey, g] of grouped) {
     const lastColon = groupKey.lastIndexOf(':');
     const route = groupKey.slice(0, lastColon);
@@ -605,10 +641,24 @@ async function aggregateDailyStats(env, date) {
       airline_name: g.airlineName
     };
     puts.push(env.FLIGHTS_KV.put(`daily_stats:${route}:${airline}:${date}`, JSON.stringify(value)));
+
+    if (!byAirlineToday.has(airline)) byAirlineToday.set(airline, emptyLeaderboardAcc());
+    const a = byAirlineToday.get(airline);
+    a.total += g.total;
+    a.onTime += g.onTime;
+    a.delayed += g.delayed;
+    a.cancelled += g.cancelled;
+    a.delaySum += g.delaySum;
+    a.delaySamples += g.delaySamples;
+    if (g.airlineName) a.airlineName = g.airlineName;
+    if (!a.routes[route]) a.routes[route] = { total: 0, onTime: 0, cancelled: 0 };
+    a.routes[route].total += g.total;
+    a.routes[route].onTime += g.onTime;
+    a.routes[route].cancelled += g.cancelled;
   }
 
   await Promise.all(puts);
-  return grouped.size;
+  return { count: grouped.size, byAirlineToday };
 }
 
 // Classifies each route as "busy" (>= 7 flights/week -> weekly window) or
@@ -783,18 +833,37 @@ async function getReliabilityForRoute(env, route) {
   };
 }
 
-// Recomputes leaderboard_stats — one JSON blob covering EVERY airline
-// across ALL routes and the ENTIRE flight_log history (no rolling window,
-// unlike reliability_score:*). Built from daily_stats:*, which already only
-// ever contains landed/cancelled flights (see logCompletedFlights), so this
-// is naturally free of the "scheduled/active counted as on-time" bug that
-// client-side airlineStats() used to have.
-// Runs once a night (same cron tick as updateRollingScores) and on manual
-// /api/refresh, then /api/leaderboard just reads the precomputed blob —
-// scanning the full unbounded daily_stats:* prefix on every request would
-// get slower as history grows.
-async function updateLeaderboardStats(env) {
-  const byAirline = new Map();   // airline_iata -> accumulator + per-route breakdown
+// Shape used throughout the leaderboard accumulator below: one entry per
+// airline, with a nested per-route breakdown. Kept as plain objects (not
+// Maps) since the whole accumulator round-trips through KV as JSON.
+function emptyLeaderboardAcc() {
+  return { total: 0, onTime: 0, delayed: 0, cancelled: 0, delaySum: 0, delaySamples: 0, airlineName: null, routes: {} };
+}
+
+function addLeaderboardAcc(dst, src) {
+  dst.total += src.total;
+  dst.onTime += src.onTime;
+  dst.delayed += src.delayed;
+  dst.cancelled += src.cancelled;
+  dst.delaySum += src.delaySum;
+  dst.delaySamples += src.delaySamples;
+  if (src.airlineName) dst.airlineName = src.airlineName;
+  for (const [route, r] of Object.entries(src.routes)) {
+    if (!dst.routes[route]) dst.routes[route] = { total: 0, onTime: 0, cancelled: 0 };
+    dst.routes[route].total += r.total;
+    dst.routes[route].onTime += r.onTime;
+    dst.routes[route].cancelled += r.cancelled;
+  }
+}
+
+const LEADERBOARD_ACC_KEY = 'leaderboard_accumulator';
+
+// One-time (or recovery) backfill: this is the OLD full-history scan,
+// used only to seed the accumulator the first time updateLeaderboardStats
+// runs after this fix ships (or if the accumulator key is ever lost). Every
+// run after that goes through the bounded incremental path below instead.
+async function buildLeaderboardAccumulatorFromFullHistory(env) {
+  const baked = {};
 
   let cursor;
   do {
@@ -809,13 +878,8 @@ async function updateLeaderboardStats(env) {
       const parts = item.name.split(':');
       const route = parts[1], airline = parts[2];
 
-      if (!byAirline.has(airline)) {
-        byAirline.set(airline, {
-          total: 0, onTime: 0, delayed: 0, cancelled: 0, delaySum: 0, delaySamples: 0,
-          airlineName: null, routes: new Map()
-        });
-      }
-      const a = byAirline.get(airline);
+      if (!baked[airline]) baked[airline] = emptyLeaderboardAcc();
+      const a = baked[airline];
       a.total += s.total_flights;
       a.onTime += s.on_time_count;
       a.delayed += s.delayed_count;
@@ -824,17 +888,83 @@ async function updateLeaderboardStats(env) {
       a.delaySamples += s.delay_samples;
       if (s.airline_name) a.airlineName = s.airline_name;
 
-      if (!a.routes.has(route)) a.routes.set(route, { total: 0, onTime: 0, cancelled: 0 });
-      const r = a.routes.get(route);
-      r.total += s.total_flights;
-      r.onTime += s.on_time_count;
-      r.cancelled += s.cancelled_count;
+      if (!a.routes[route]) a.routes[route] = { total: 0, onTime: 0, cancelled: 0 };
+      a.routes[route].total += s.total_flights;
+      a.routes[route].onTime += s.on_time_count;
+      a.routes[route].cancelled += s.cancelled_count;
     }
     cursor = list.list_complete ? undefined : list.cursor;
   } while (cursor);
 
+  return { baked, pendingDate: null, pending: {} };
+}
+
+// Recomputes leaderboard_stats — one JSON blob covering EVERY airline
+// across ALL routes and the ENTIRE flight_log history (no rolling window,
+// unlike reliability_score:*). Built from daily_stats:*, which already only
+// ever contains landed/cancelled flights (see logCompletedFlights), so this
+// is naturally free of the "scheduled/active counted as on-time" bug that
+// client-side airlineStats() used to have.
+//
+// This used to re-list()+get() the ENTIRE daily_stats:* prefix from scratch
+// every night — the same unbounded-scan pattern getAllFlights had (see its
+// comment above). It ran quietly on a cron tick with no request-facing error
+// path, so as history grew past the Workers subrequest cap it would have
+// started throwing mid-scan and silently stopped updating leaderboard_stats,
+// with no visible symptom beyond a leaderboard that quietly stopped moving.
+//
+// Fix: keep a running accumulator (leaderboard_accumulator) in KV instead of
+// rebuilding from scratch. Each run only folds in `date`'s numbers — handed
+// straight in as `todayByAirline` from aggregateDailyStats, which already
+// computed them from today's flight_log, so no daily_stats:* scan is needed
+// at all in the common case. That day's contribution is stored separately as
+// "pending" and replaces (not adds to) any previous pending value for the
+// same date, so re-running this for the same day (e.g. repeated manual
+// /api/refresh calls) doesn't double-count. Once `date` advances, the old
+// pending contribution is folded permanently into `baked`. Total KV cost per
+// run is now a fixed 1 read + 2 writes, regardless of how much history has
+// piled up.
+async function updateLeaderboardStats(env, date, todayByAirline) {
+  const raw = await env.FLIGHTS_KV.get(LEADERBOARD_ACC_KEY);
+  let acc;
+  if (raw) {
+    try { acc = JSON.parse(raw); } catch { acc = null; }
+  }
+  if (!acc) {
+    acc = await buildLeaderboardAccumulatorFromFullHistory(env);
+  }
+
+  // A previously-pending day is now in the past — bake it in for good.
+  if (acc.pendingDate && acc.pendingDate !== date) {
+    for (const [airline, a] of Object.entries(acc.pending)) {
+      if (!acc.baked[airline]) acc.baked[airline] = emptyLeaderboardAcc();
+      addLeaderboardAcc(acc.baked[airline], a);
+    }
+  }
+
+  // Replace this date's contribution wholesale (not additive), so reprocessing
+  // the same date is idempotent.
+  acc.pendingDate = date;
+  acc.pending = {};
+  for (const [airline, a] of todayByAirline) {
+    acc.pending[airline] = a;
+  }
+
+  // combined = baked (everything before `date`) + pending (`date` itself),
+  // used only to compute this run's output — baked/pending stay separate in
+  // storage so the next run can tell what's already permanent.
+  const combined = {};
+  for (const [airline, a] of Object.entries(acc.baked)) {
+    combined[airline] = emptyLeaderboardAcc();
+    addLeaderboardAcc(combined[airline], a);
+  }
+  for (const [airline, a] of Object.entries(acc.pending)) {
+    if (!combined[airline]) combined[airline] = emptyLeaderboardAcc();
+    addLeaderboardAcc(combined[airline], a);
+  }
+
   const airlines = [];
-  for (const [airlineIata, a] of byAirline) {
+  for (const [airlineIata, a] of Object.entries(combined)) {
     if (a.total < MIN_SAMPLE_SIZE) continue; // هماهنگ با airlineStats سمت فرانت (MIN_SAMPLE_SIZE=5)
 
     const completed = a.total - a.cancelled;
@@ -842,7 +972,7 @@ async function updateLeaderboardStats(env) {
     // بدترین ۳ مسیر این ایرلاین — دست‌کم ۲ پرواز روی آن مسیر، مرتب بر اساس
     // کمترین نرخ به‌موقعی. هماهنگ با airlineRouteBreakdown سمت فرانت (که این
     // تابع جایگزینش می‌شود).
-    const routes = [...a.routes.entries()]
+    const routes = Object.entries(a.routes)
       .map(([route, r]) => {
         const routeCompleted = r.total - r.cancelled;
         return { route, total: r.total, on_time_rate: routeCompleted ? Math.round((r.onTime / routeCompleted) * 1000) / 10 : 0 };
@@ -866,6 +996,7 @@ async function updateLeaderboardStats(env) {
   airlines.sort((x, y) => y.on_time_rate - x.on_time_rate);
 
   const value = { airlines, last_updated: new Date().toISOString() };
+  await env.FLIGHTS_KV.put(LEADERBOARD_ACC_KEY, JSON.stringify(acc));
   await env.FLIGHTS_KV.put('leaderboard_stats', JSON.stringify(value));
   return airlines.length;
 }
