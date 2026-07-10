@@ -439,7 +439,13 @@ async function logCompletedFlights(env, json, depAirport) {
 
     // Key encodes date first so a whole day's log can be listed by prefix
     // during aggregation without scanning the entire 90-day history.
-    const key = `flight_log:${date}:${route}:${airlineIata}:${flightIata}`;
+    // dep.scheduled is appended so two different flight instances sharing
+    // the same flight number on the same day (e.g. two rotations) don't
+    // collide. status is deliberately NOT part of the key: if the API later
+    // corrects a flight's status (e.g. cancelled -> landed), the new write
+    // must overwrite the old record, not create a duplicate that would get
+    // double-counted in aggregation.
+    const key = `flight_log:${date}:${route}:${airlineIata}:${flightIata}:${dep.scheduled}`;
     puts.push(env.FLIGHTS_KV.put(key, JSON.stringify(record)));
   }
 
