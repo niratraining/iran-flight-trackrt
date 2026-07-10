@@ -989,6 +989,7 @@ async function updateLeaderboardStats(env, date, todayByAirline) {
       on_time_rate: completed > 0 ? Math.round((a.onTime / completed) * 1000) / 10 : 0,
       avg_delay_minutes: a.delaySamples > 0 ? Math.round((a.delaySum / a.delaySamples) * 10) / 10 : 0,
       cancellation_rate: a.total > 0 ? Math.round((a.cancelled / a.total) * 1000) / 10 : 0,
+      delayed_count: a.delayed,
       routes
     });
   }
