@@ -4,10 +4,9 @@
 // آدرس داشبوردت رو اینجا بذار تا فقط همون بتونه به API وصل بشه
 const ALLOWED_ORIGIN = 'https://iran-flight-trackrt-dashboard.nirahelp.workers.dev';
 
-// یه رشتهٔ رندوم و طولانی برای خودت بساز (مثلاً از یه پسورد جنریتور)
-// و همینو بعداً به عنوان Secret توی Cloudflare هم ست کن (env.REFRESH_SECRET)
-// اینجا فقط fallback هست اگه secret ست نشده باشه.
-const FALLBACK_REFRESH_SECRET = 'CHANGE-THIS-TO-SOMETHING-RANDOM';
+// توجه: مقدار واقعی REFRESH_SECRET رو فقط توی Cloudflare Secrets ست کن
+// (Settings > Variables and Secrets > Add > نوع: Secret > نام: REFRESH_SECRET)
+// هیچوقت این مقدار رو توی کد یا گیت‌هاب ننویس.
 
 export default {
   async scheduled(event, env, ctx) {
@@ -43,7 +42,16 @@ export default {
 
     // مسیر خصوصی: فقط با رمز مخفی خودت میشه دستی داده رو رفرش کرد
     if (url.pathname === '/api/refresh') {
-      const secret = env.REFRESH_SECRET || FALLBACK_REFRESH_SECRET;
+      const secret = env.REFRESH_SECRET;
+
+      // اگه secret روی Cloudflare ست نشده باشه، مسیر کاملاً غیرفعال می‌مونه
+      if (!secret) {
+        return new Response(JSON.stringify({ error: 'refresh disabled: REFRESH_SECRET not configured' }), {
+          status: 503,
+          headers: { 'content-type': 'application/json', ...corsHeaders(request) }
+        });
+      }
+
       const provided = url.searchParams.get('token');
       if (provided !== secret) {
         return new Response(JSON.stringify({ error: 'unauthorized' }), {
