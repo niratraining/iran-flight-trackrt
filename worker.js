@@ -1,8 +1,11 @@
 // ==================================================================
 // تنظیمات امنیتی
 // ==================================================================
-// آدرس داشبوردت رو اینجا بذار تا فقط همون بتونه به API وصل بشه
-const ALLOWED_ORIGIN = 'https://iran-flight-trackrt-dashboard.nirahelp.workers.dev';
+// آدرس‌های مجاز داشبورد رو اینجا لیست کن تا فقط اینا بتونن به API وصل بشن
+const ALLOWED_ORIGINS = [
+  'https://iran-flight-trackrt-dashboard.nirahelp.workers.dev',
+  'https://flight-track.travellab.ir'
+];
 
 // توجه: مقدار واقعی REFRESH_SECRET رو فقط توی Cloudflare Secrets ست کن
 // (Settings > Variables and Secrets > Add > نوع: Secret > نام: REFRESH_SECRET)
@@ -73,10 +76,13 @@ export default {
 };
 
 function corsHeaders(request) {
+  const origin = request.headers.get('Origin');
+  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
-    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+    'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin'
   };
 }
 
