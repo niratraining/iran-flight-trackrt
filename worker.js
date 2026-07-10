@@ -115,16 +115,25 @@ export default {
       let cached = await cache.match(cacheKey);
       if (cached) return cached;
 
-      const data = await getAllFlights(env);
-      const response = new Response(JSON.stringify(data), {
-        headers: {
-          'content-type': 'application/json',
-          'Cache-Control': 'public, max-age=300',
-          ...corsHeaders(request)
-        }
-      });
-      ctx.waitUntil(cache.put(cacheKey, response.clone()));
-      return response;
+      try {
+        const data = await getAllFlights(env);
+        const response = new Response(JSON.stringify(data), {
+          headers: {
+            'content-type': 'application/json',
+            'Cache-Control': 'public, max-age=300',
+            ...corsHeaders(request)
+          }
+        });
+        ctx.waitUntil(cache.put(cacheKey, response.clone()));
+        return response;
+      } catch (err) {
+        // Don't let this fail silently — a bare unhandled throw here used to
+        // leave the frontend with a generic failed fetch and no clue why.
+        return new Response(JSON.stringify({ error: 'failed to load flights', detail: String(err) }), {
+          status: 500,
+          headers: { 'content-type': 'application/json', ...corsHeaders(request) }
+        });
+      }
     }
 
     // Private route: manual refresh — full list or a single airport
@@ -381,82 +390,74 @@ async function trackAirports(env, airportCodes) {
   return results;
 }
 
-// Non-snapshot key prefixes that can show up in the same KV namespace.
-// getAllFlights only cares about the `${AIRPORT}_${timestamp}` snapshot
-// blobs written by trackAirports; everything else here is skipped outright
-// so it never eats into the per-call key budget while paginating.
-const NON_SNAPSHOT_PREFIXES = ['error_', 'key_usage:', 'flight_log:', 'daily_stats:', 'reliability_score:', 'route_class:'];
-
 async function getAllFlights(env) {
   const latestByFlight = new Map();
   let updatedAt = null;
 
-  // MUST paginate: KV list() returns at most 1000 keys per call, in
-  // lexicographic order (not chronological). Airport snapshot keys never
-  // expire, so this namespace can easily exceed 1000 keys after a few
-  // months — without the cursor loop, a single un-paginated call would
-  // silently return only the alphabetically-earliest slice (oldest
-  // snapshots for the alphabetically-first airports), missing today's
-  // data and most destinations entirely.
-  let cursor;
-  do {
-    const list = await env.FLIGHTS_KV.list({ cursor });
+  // Only read the LATEST snapshot per airport instead of scanning every
+  // snapshot key ever written. Each trackAirports() run also writes
+  // last_run:{iata}, which holds the exact timestamp of that airport's
+  // freshest snapshot — so the snapshot itself lives at a known key,
+  // `${iata}_${timestamp}`, no list()/scan needed to find it.
+  //
+  // Why this matters: the old version did a full list() across the whole
+  // KV namespace and then one GET per snapshot key it found. Snapshot keys
+  // have a 10-day TTL but don't get cleaned up early, so over time (20
+  // airports x up to several runs/day x 10 days) that scan grows into
+  // hundreds of KV reads on a single request. Cloudflare Workers cap the
+  // number of subrequests (KV calls count) a single invocation can make —
+  // once the key count crept past that ceiling, this function started
+  // throwing mid-scan and /api/flights returned nothing at all, even
+  // though trackAirports() itself had already written tonight's data
+  // successfully. This version always does a fixed ~40 KV reads (2 per
+  // airport) no matter how much history has piled up.
+  for (const airport of ALL_AIRPORTS) {
+    const lastRun = await env.FLIGHTS_KV.get(`last_run:${airport.iata}`);
+    if (!lastRun) continue;
+    if (!updatedAt || lastRun > updatedAt) updatedAt = lastRun;
 
-    for (const item of list.keys) {
-      if (item.name.startsWith('last_run:')) {
-        const val = await env.FLIGHTS_KV.get(item.name);
-        if (val && (!updatedAt || val > updatedAt)) updatedAt = val;
-        continue;
-      }
+    const raw = await env.FLIGHTS_KV.get(`${airport.iata}_${lastRun}`);
+    if (!raw) continue;
 
-      if (item.name === 'last_run') continue;
-      if (NON_SNAPSHOT_PREFIXES.some(p => item.name.startsWith(p))) continue;
-
-      const raw = await env.FLIGHTS_KV.get(item.name);
-      if (!raw) continue;
-
-      let json;
-      try {
-        json = JSON.parse(raw);
-      } catch {
-        continue;
-      }
-
-      const flights = json.data || [];
-      for (const f of flights) {
-        const dep = f.departure || {};
-        const arr = f.arrival || {};
-        const airline = f.airline || {};
-        const flightInfo = f.flight || {};
-
-        const flightKey = `${flightInfo.iata || flightInfo.icao || 'unknown'}_${dep.scheduled || ''}`;
-
-        const record = {
-          checked_at: item.name.split('_').slice(1).join('_'),
-          flight_iata: flightInfo.iata || '',
-          airline: airline.name || 'Unknown',
-          dep_iata: dep.iata || '',
-          dep_scheduled: dep.scheduled || '',
-          dep_estimated: dep.estimated || '',
-          dep_actual: dep.actual || '',
-          dep_delay: dep.delay ?? null,
-          arr_iata: arr.iata || '',
-          arr_scheduled: arr.scheduled || '',
-          arr_estimated: arr.estimated || '',
-          arr_actual: arr.actual || '',
-          arr_delay: arr.delay ?? null,
-          status: f.flight_status || 'unknown'
-        };
-
-        const existing = latestByFlight.get(flightKey);
-        if (!existing || record.checked_at > existing.checked_at) {
-          latestByFlight.set(flightKey, record);
-        }
-      }
+    let json;
+    try {
+      json = JSON.parse(raw);
+    } catch {
+      continue;
     }
 
-    cursor = list.list_complete ? undefined : list.cursor;
-  } while (cursor);
+    const flights = json.data || [];
+    for (const f of flights) {
+      const dep = f.departure || {};
+      const arr = f.arrival || {};
+      const airline = f.airline || {};
+      const flightInfo = f.flight || {};
+
+      const flightKey = `${flightInfo.iata || flightInfo.icao || 'unknown'}_${dep.scheduled || ''}`;
+
+      const record = {
+        checked_at: lastRun,
+        flight_iata: flightInfo.iata || '',
+        airline: airline.name || 'Unknown',
+        dep_iata: dep.iata || '',
+        dep_scheduled: dep.scheduled || '',
+        dep_estimated: dep.estimated || '',
+        dep_actual: dep.actual || '',
+        dep_delay: dep.delay ?? null,
+        arr_iata: arr.iata || '',
+        arr_scheduled: arr.scheduled || '',
+        arr_estimated: arr.estimated || '',
+        arr_actual: arr.actual || '',
+        arr_delay: arr.delay ?? null,
+        status: f.flight_status || 'unknown'
+      };
+
+      const existing = latestByFlight.get(flightKey);
+      if (!existing || record.checked_at > existing.checked_at) {
+        latestByFlight.set(flightKey, record);
+      }
+    }
+  }
 
   // Backward compatibility: fall back to the old global last_run key
   if (!updatedAt) {
