@@ -68,20 +68,20 @@ export default {
   async scheduled(event, env, ctx) {
     const cron = event.cron;
 
-    // 08:00 and 16:00 Tehran time -> THR and IKA only
-    if (cron === '30 4 * * *' || cron === '30 12 * * *') {
-      await trackAirports(env, MAIN_AIRPORTS);
-      return;
-    }
+    // 23:59 Tehran (20:29 UTC, fixed — Tehran has no DST) -> single nightly
+    // run for ALL 20 airports. By this hour, essentially every flight
+    // scheduled for today has already reached a final status (landed or
+    // cancelled) in aviationstack's response for dep_iata=<airport>, since
+    // that endpoint returns the whole day's schedule with live status, not
+    // just flights currently in the air. One late-night call therefore
+    // captures the full day per airport instead of needing multiple
+    // snapshots at scattered hours (which risked missing flights whose
+    // "landed" moment fell between checks). Aggregation + scoring run
+    // immediately after, in the same invocation, so today's data is
+    // reflected right away rather than waiting for a separate cron tick.
+    if (cron === '29 20 * * *') {
+      await trackAirports(env, ALL_AIRPORTS.map(a => a.iata));
 
-    // 09:00 Tehran time -> the other 18 airports
-    if (cron === '30 5 * * *') {
-      await trackAirports(env, OTHER_AIRPORTS);
-      return;
-    }
-
-    // 23:30 Tehran (20:00 UTC) -> daily aggregation + rolling reliability scores
-    if (cron === '0 20 * * *') {
       const today = tehranDateStr(new Date());
       await aggregateDailyStats(env, today);
 
@@ -147,6 +147,15 @@ export default {
 
       const airportParam = (url.searchParams.get('airport') || '').toUpperCase();
 
+      // Manual refresh used to only call trackAirports, which writes to
+      // flight_log:* but never recomputes daily_stats:* or
+      // reliability_score:* — those are only built by aggregateDailyStats /
+      // updateRollingScores, which otherwise run once a night. That's why a
+      // same-day manual refresh from /admin never changed anything on the
+      // comparison page. Both steps now run right after tracking so a
+      // manual refresh is reflected immediately.
+      const today = tehranDateStr(new Date());
+
       if (airportParam) {
         const known = ALL_AIRPORTS.some(a => a.iata === airportParam);
         if (!known) {
@@ -156,6 +165,8 @@ export default {
           });
         }
         const results = await trackAirports(env, [airportParam]);
+        await aggregateDailyStats(env, today);
+        await updateRollingScores(env);
         return new Response(JSON.stringify({ status: 'refreshed', airport: airportParam, results }), {
           headers: { 'content-type': 'application/json', ...corsHeaders(request) }
         });
@@ -163,6 +174,8 @@ export default {
 
       // No airport param -> refresh all 20 airports
       const results = await trackAirports(env, ALL_AIRPORTS.map(a => a.iata));
+      await aggregateDailyStats(env, today);
+      await updateRollingScores(env);
       return new Response(JSON.stringify({ status: 'refreshed', airports: 'all', results }), {
         headers: { 'content-type': 'application/json', ...corsHeaders(request) }
       });
@@ -267,26 +280,60 @@ async function incrementKeyUsage(env, index) {
 // Data collection
 // ------------------------------------------------------------------
 
+// Aviationstack paginates at 100 results per call. A busy airport can have
+// well over 100 scheduled flights in a day, so a single call silently
+// truncates the day's data. This walks `offset` forward until the API says
+// there's nothing left, merging every page's `data` array into one combined
+// flight list. MAX_PAGES_PER_AIRPORT is a safety cap so one runaway airport
+// can't burn through the whole monthly key quota in a single run.
+const AVIATIONSTACK_PAGE_SIZE = 100;
+const MAX_PAGES_PER_AIRPORT = 5; // cap: 500 flights/airport/day
+
+async function fetchAllFlightsForAirport(env, airport) {
+  let offset = 0;
+  let combined = [];
+  let callsUsed = 0;
+  let lastKeyIndex = null;
+
+  for (let page = 0; page < MAX_PAGES_PER_AIRPORT; page++) {
+    const picked = await selectApiKey(env);
+    if (!picked) {
+      if (combined.length === 0) throw new Error('no API key configured');
+      break; // ran out of keys mid-pagination: return what we have so far
+    }
+
+    const apiUrl = `http://api.aviationstack.com/v1/flights?access_key=${picked.key}&dep_iata=${airport}&limit=${AVIATIONSTACK_PAGE_SIZE}&offset=${offset}`;
+    const res = await fetch(apiUrl);
+    const json = await res.json();
+    await incrementKeyUsage(env, picked.index);
+    callsUsed++;
+    lastKeyIndex = picked.index;
+
+    const pageData = json.data || [];
+    combined = combined.concat(pageData);
+
+    const pagination = json.pagination;
+    const total = pagination ? pagination.total : pageData.length;
+    offset += pageData.length;
+
+    // Stop once we've paged through everything the API has, or the page
+    // came back short/empty (also signals end of results).
+    if (pageData.length < AVIATIONSTACK_PAGE_SIZE || offset >= total) break;
+  }
+
+  return { data: combined, calls_used: callsUsed, key_used: lastKeyIndex };
+}
+
 async function trackAirports(env, airportCodes) {
   const now = new Date().toISOString();
   const results = [];
 
   for (const airport of airportCodes) {
-    const picked = await selectApiKey(env);
-
-    if (!picked) {
-      await env.FLIGHTS_KV.put(`error_${airport}_${now}`, 'no API key configured');
-      results.push({ airport, status: 'no_key' });
-      continue;
-    }
-
     try {
-      const apiUrl = `http://api.aviationstack.com/v1/flights?access_key=${picked.key}&dep_iata=${airport}`;
-      const res = await fetch(apiUrl);
-      const json = await res.json();
+      const { data, calls_used, key_used } = await fetchAllFlightsForAirport(env, airport);
+      const json = { data };
 
       await env.FLIGHTS_KV.put(`${airport}_${now}`, JSON.stringify(json));
-      await incrementKeyUsage(env, picked.index);
       await env.FLIGHTS_KV.put(`last_run:${airport}`, now);
 
       // Append-only historical log: landed/cancelled flights get a permanent
@@ -294,7 +341,7 @@ async function trackAirports(env, airportCodes) {
       // overwrites — each completed flight is its own KV entry.
       const loggedCount = await logCompletedFlights(env, json, airport);
 
-      results.push({ airport, status: 'ok', key_used: picked.index, logged: loggedCount });
+      results.push({ airport, status: 'ok', key_used, calls_used, logged: loggedCount });
     } catch (err) {
       await env.FLIGHTS_KV.put(`error_${airport}_${now}`, String(err));
       results.push({ airport, status: 'error', error: String(err) });
