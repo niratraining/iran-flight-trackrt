@@ -45,6 +45,14 @@ const OTHER_AIRPORTS = ALL_AIRPORTS.filter(a => a.group === 'other').map(a => a.
 // Total key slots (9 active + 3 reserved empty, see architecture doc section 3.4-e)
 const KEY_SLOTS = 12;
 
+// ------------------------------------------------------------------
+// Reliability score — constants (see architecture doc section 2)
+// ------------------------------------------------------------------
+const MIN_SAMPLE_SIZE = 5;          // fewer flights than this -> "insufficient data"
+const BUSY_ROUTE_THRESHOLD = 7;     // flights/week -> route counts as "busy"
+const BUSY_WINDOW_DAYS = 7;         // busy routes: weekly rolling window
+const QUIET_WINDOW_DAYS = 15;       // quiet routes: 15-day rolling window
+
 // Maps a pool slot index (1..KEY_SLOTS) to the actual Cloudflare Secret name.
 // Slot 1 -> AVIATIONSTACK_KEY (no suffix, the original single key)
 // Slot 2 -> AVIATIONSTACK_KEY1
@@ -69,6 +77,22 @@ export default {
     // 09:00 Tehran time -> the other 18 airports
     if (cron === '30 5 * * *') {
       await trackAirports(env, OTHER_AIRPORTS);
+      return;
+    }
+
+    // 23:30 Tehran (20:00 UTC) -> daily aggregation + rolling reliability scores
+    if (cron === '0 20 * * *') {
+      const today = tehranDateStr(new Date());
+      await aggregateDailyStats(env, today);
+
+      // Route classification (busy/quiet) only needs to run weekly — it's a
+      // heavier full-scan operation. Monday in Tehran local time.
+      const tehranNow = new Date(Date.now() + 3.5 * 3600 * 1000);
+      if (tehranNow.getUTCDay() === 1) {
+        await classifyRoutes(env);
+      }
+
+      await updateRollingScores(env);
       return;
     }
 
@@ -142,6 +166,33 @@ export default {
       return new Response(JSON.stringify({ status: 'refreshed', airports: 'all', results }), {
         headers: { 'content-type': 'application/json', ...corsHeaders(request) }
       });
+    }
+
+    // Public route: reliability score per route, sorted by score
+    if (url.pathname === '/api/reliability') {
+      const route = (url.searchParams.get('route') || '').toUpperCase();
+      if (!route) {
+        return new Response(JSON.stringify({ error: 'پارامتر route لازمه، مثلاً ?route=THR-IST' }), {
+          status: 400,
+          headers: { 'content-type': 'application/json', ...corsHeaders(request) }
+        });
+      }
+
+      const cache = caches.default;
+      const cacheKey = new Request(url.toString(), request);
+      let cached = await cache.match(cacheKey);
+      if (cached) return cached;
+
+      const data = await getReliabilityForRoute(env, route);
+      const response = new Response(JSON.stringify(data), {
+        headers: {
+          'content-type': 'application/json',
+          'Cache-Control': 'public, max-age=1800',
+          ...corsHeaders(request)
+        }
+      });
+      ctx.waitUntil(cache.put(cacheKey, response.clone()));
+      return response;
     }
 
     // Admin panel — protected by the same REFRESH_SECRET
@@ -238,7 +289,12 @@ async function trackAirports(env, airportCodes) {
       await incrementKeyUsage(env, picked.index);
       await env.FLIGHTS_KV.put(`last_run:${airport}`, now);
 
-      results.push({ airport, status: 'ok', key_used: picked.index });
+      // Append-only historical log: landed/cancelled flights get a permanent
+      // record so reliability scores can be computed later. This never
+      // overwrites — each completed flight is its own KV entry.
+      const loggedCount = await logCompletedFlights(env, json, airport);
+
+      results.push({ airport, status: 'ok', key_used: picked.index, logged: loggedCount });
     } catch (err) {
       await env.FLIGHTS_KV.put(`error_${airport}_${now}`, String(err));
       results.push({ airport, status: 'error', error: String(err) });
@@ -316,6 +372,294 @@ async function getAllFlights(env) {
     updated_at: updatedAt || new Date().toISOString(),
     count: latestByFlight.size,
     flights: Array.from(latestByFlight.values())
+  };
+}
+
+// ------------------------------------------------------------------
+// Reliability score — historical logging + aggregation
+// (see architecture doc: معماری-امتیاز-اعتمادپذیری.md)
+// ------------------------------------------------------------------
+
+// Tehran has no DST (fixed UTC+3:30). Used only to pick day boundaries.
+function tehranDateStr(d = new Date()) {
+  const tehran = new Date(d.getTime() + 3.5 * 3600 * 1000);
+  return tehran.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+function flightDateFromScheduled(scheduled) {
+  if (!scheduled) return null;
+  return scheduled.slice(0, 10);
+}
+
+// Pulls landed/cancelled flights out of a raw aviationstack response and
+// appends them permanently to flight_log:* — never overwritten, unlike the
+// live snapshot keys used by trackAirports/getAllFlights.
+//
+// on-time definition (no grace period): a flight is on_time only if
+// dep_delay <= 0. Anything above zero, even 1 minute, counts as delayed.
+// Cancelled flights have no delay value and are scored as 0 in aggregation.
+async function logCompletedFlights(env, json, depAirport) {
+  const flights = json.data || [];
+  const puts = [];
+
+  for (const f of flights) {
+    const status = f.flight_status;
+    if (status !== 'landed' && status !== 'cancelled') continue;
+
+    const dep = f.departure || {};
+    const arr = f.arrival || {};
+    const airline = f.airline || {};
+    const flightInfo = f.flight || {};
+
+    const flightIata = flightInfo.iata || flightInfo.icao;
+    const airlineIata = airline.iata || airline.icao || 'UNK';
+    const depIata = dep.iata || depAirport;
+    const arrIata = arr.iata || '';
+    if (!flightIata || !arrIata) continue;
+
+    const date = flightDateFromScheduled(dep.scheduled) || tehranDateStr();
+    const route = `${depIata}-${arrIata}`;
+
+    const record = {
+      flight_date: date,
+      route,
+      dep_iata: depIata,
+      arr_iata: arrIata,
+      airline_iata: airlineIata,
+      airline_name: airline.name || 'Unknown',
+      flight_iata: flightIata,
+      dep_scheduled: dep.scheduled || '',
+      dep_actual: dep.actual || '',
+      dep_delay: dep.delay ?? null,
+      arr_scheduled: arr.scheduled || '',
+      arr_actual: arr.actual || '',
+      arr_delay: arr.delay ?? null,
+      status
+    };
+
+    // Key encodes date first so a whole day's log can be listed by prefix
+    // during aggregation without scanning the entire 90-day history.
+    const key = `flight_log:${date}:${route}:${airlineIata}:${flightIata}`;
+    puts.push(env.FLIGHTS_KV.put(key, JSON.stringify(record)));
+  }
+
+  await Promise.all(puts);
+  return puts.length;
+}
+
+// Reads one day's flight_log entries and writes daily_stats:{route}:{airline}:{date}
+async function aggregateDailyStats(env, date) {
+  const prefix = `flight_log:${date}:`;
+  const grouped = new Map(); // "route:airline" -> accumulator
+
+  let cursor;
+  do {
+    const list = await env.FLIGHTS_KV.list({ prefix, cursor });
+    for (const item of list.keys) {
+      const raw = await env.FLIGHTS_KV.get(item.name);
+      if (!raw) continue;
+      let rec;
+      try { rec = JSON.parse(raw); } catch { continue; }
+
+      const groupKey = `${rec.route}:${rec.airline_iata}`;
+      if (!grouped.has(groupKey)) {
+        grouped.set(groupKey, { total: 0, onTime: 0, delayed: 0, cancelled: 0, delaySum: 0, delaySamples: 0 });
+      }
+      const g = grouped.get(groupKey);
+      g.total++;
+
+      if (rec.status === 'cancelled') {
+        g.cancelled++;
+        continue;
+      }
+
+      const delay = typeof rec.dep_delay === 'number' ? rec.dep_delay : 0;
+      g.delaySum += delay;
+      g.delaySamples++;
+      if (delay <= 0) g.onTime++;
+      else g.delayed++;
+    }
+    cursor = list.list_complete ? undefined : list.cursor;
+  } while (cursor);
+
+  const puts = [];
+  for (const [groupKey, g] of grouped) {
+    const lastColon = groupKey.lastIndexOf(':');
+    const route = groupKey.slice(0, lastColon);
+    const airline = groupKey.slice(lastColon + 1);
+
+    const value = {
+      total_flights: g.total,
+      on_time_count: g.onTime,
+      delayed_count: g.delayed,
+      cancelled_count: g.cancelled,
+      sum_delay_minutes: g.delaySum,
+      delay_samples: g.delaySamples,
+      avg_delay_minutes: g.delaySamples > 0 ? Math.round((g.delaySum / g.delaySamples) * 10) / 10 : 0
+    };
+    puts.push(env.FLIGHTS_KV.put(`daily_stats:${route}:${airline}:${date}`, JSON.stringify(value)));
+  }
+
+  await Promise.all(puts);
+  return grouped.size;
+}
+
+// Classifies each route as "busy" (>= 7 flights/week -> weekly window) or
+// "quiet" (< 7 flights/week -> 15-day window), based on the last 7 days of
+// daily_stats across all airlines on that route.
+async function classifyRoutes(env) {
+  const dates = new Set();
+  for (let i = 0; i < BUSY_WINDOW_DAYS; i++) {
+    dates.add(tehranDateStr(new Date(Date.now() - i * 86400000)));
+  }
+
+  const routeTotals = new Map();
+  let cursor;
+  do {
+    const list = await env.FLIGHTS_KV.list({ prefix: 'daily_stats:', cursor });
+    for (const item of list.keys) {
+      // key shape: daily_stats:{route}:{airline}:{date}
+      const parts = item.name.split(':');
+      const date = parts[3];
+      if (!dates.has(date)) continue;
+
+      const route = parts[1];
+      const raw = await env.FLIGHTS_KV.get(item.name);
+      if (!raw) continue;
+      const stats = JSON.parse(raw);
+      routeTotals.set(route, (routeTotals.get(route) || 0) + stats.total_flights);
+    }
+    cursor = list.list_complete ? undefined : list.cursor;
+  } while (cursor);
+
+  const puts = [];
+  for (const [route, total] of routeTotals) {
+    const classification = total >= BUSY_ROUTE_THRESHOLD ? 'busy' : 'quiet';
+    const value = {
+      classification,
+      flights_last_7_days: total,
+      window_days: classification === 'busy' ? BUSY_WINDOW_DAYS : QUIET_WINDOW_DAYS,
+      updated_at: new Date().toISOString()
+    };
+    puts.push(env.FLIGHTS_KV.put(`route_class:${route}`, JSON.stringify(value)));
+  }
+  await Promise.all(puts);
+  return routeTotals.size;
+}
+
+// Recomputes reliability_score:{route}:{airline} for every (route, airline)
+// pair seen in the last QUIET_WINDOW_DAYS of daily_stats — that's the widest
+// window either classification can use, so it's enough to catch everything
+// that might need a fresh score.
+async function updateRollingScores(env) {
+  const routeWindowCache = new Map();
+  async function getRouteWindowDays(route) {
+    if (routeWindowCache.has(route)) return routeWindowCache.get(route);
+    const raw = await env.FLIGHTS_KV.get(`route_class:${route}`);
+    // Unclassified routes default to the safer (longer) 15-day window
+    // until enough data accumulates to classify them.
+    const windowDays = raw ? JSON.parse(raw).window_days : QUIET_WINDOW_DAYS;
+    routeWindowCache.set(route, windowDays);
+    return windowDays;
+  }
+
+  const cutoff = tehranDateStr(new Date(Date.now() - (QUIET_WINDOW_DAYS - 1) * 86400000));
+  const pairs = new Map(); // "route:airline" -> [daily_stats keys]
+
+  let cursor;
+  do {
+    const list = await env.FLIGHTS_KV.list({ prefix: 'daily_stats:', cursor });
+    for (const item of list.keys) {
+      const parts = item.name.split(':');
+      const route = parts[1], airline = parts[2], date = parts[3];
+      if (date < cutoff) continue;
+      const pairKey = `${route}:${airline}`;
+      if (!pairs.has(pairKey)) pairs.set(pairKey, []);
+      pairs.get(pairKey).push(item.name);
+    }
+    cursor = list.list_complete ? undefined : list.cursor;
+  } while (cursor);
+
+  const puts = [];
+  for (const [pairKey, dailyKeys] of pairs) {
+    const lastColon = pairKey.lastIndexOf(':');
+    const route = pairKey.slice(0, lastColon);
+    const airline = pairKey.slice(lastColon + 1);
+
+    const windowDays = await getRouteWindowDays(route);
+    const windowCutoff = tehranDateStr(new Date(Date.now() - (windowDays - 1) * 86400000));
+
+    let total = 0, onTime = 0, delayed = 0, cancelled = 0, delaySum = 0, delaySamples = 0;
+    for (const dailyKey of dailyKeys) {
+      const date = dailyKey.split(':')[3];
+      if (date < windowCutoff) continue;
+      const raw = await env.FLIGHTS_KV.get(dailyKey);
+      if (!raw) continue;
+      const s = JSON.parse(raw);
+      total += s.total_flights;
+      onTime += s.on_time_count;
+      delayed += s.delayed_count;
+      cancelled += s.cancelled_count;
+      delaySum += s.sum_delay_minutes;
+      delaySamples += s.delay_samples;
+    }
+
+    let value;
+    if (total < MIN_SAMPLE_SIZE) {
+      value = {
+        insufficient_data: true,
+        reason: `فقط ${total} پرواز در ${windowDays} روز اخیر ثبت شده`,
+        sample_size: total,
+        window_days: windowDays,
+        last_updated: new Date().toISOString()
+      };
+    } else {
+      value = {
+        score_percent: Math.round((onTime / total) * 1000) / 10,
+        avg_delay_minutes: delaySamples > 0 ? Math.round((delaySum / delaySamples) * 10) / 10 : 0,
+        cancellation_rate: Math.round((cancelled / total) * 1000) / 10,
+        sample_size: total,
+        window_days: windowDays,
+        last_updated: new Date().toISOString()
+      };
+    }
+    puts.push(env.FLIGHTS_KV.put(`reliability_score:${route}:${airline}`, JSON.stringify(value)));
+  }
+
+  await Promise.all(puts);
+  return puts.length;
+}
+
+// Serves /api/reliability?route=THR-IST — every airline flying that route,
+// sorted best score first (routes/airlines with insufficient data go last).
+async function getReliabilityForRoute(env, route) {
+  const prefix = `reliability_score:${route}:`;
+  const airlines = [];
+
+  let cursor;
+  do {
+    const list = await env.FLIGHTS_KV.list({ prefix, cursor });
+    for (const item of list.keys) {
+      const airlineIata = item.name.slice(prefix.length);
+      const raw = await env.FLIGHTS_KV.get(item.name);
+      if (!raw) continue;
+      airlines.push({ airline_iata: airlineIata, ...JSON.parse(raw) });
+    }
+    cursor = list.list_complete ? undefined : list.cursor;
+  } while (cursor);
+
+  airlines.sort((a, b) => {
+    if (a.insufficient_data && !b.insufficient_data) return 1;
+    if (!a.insufficient_data && b.insufficient_data) return -1;
+    return (b.score_percent ?? -1) - (a.score_percent ?? -1);
+  });
+
+  const routeClassRaw = await env.FLIGHTS_KV.get(`route_class:${route}`);
+
+  return {
+    route,
+    classification: routeClassRaw ? JSON.parse(routeClassRaw) : null,
+    airlines
   };
 }
 
