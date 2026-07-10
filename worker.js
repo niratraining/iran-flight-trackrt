@@ -93,6 +93,7 @@ export default {
       }
 
       await updateRollingScores(env);
+      await updateLeaderboardStats(env);
       return;
     }
 
@@ -167,6 +168,7 @@ export default {
         const results = await trackAirports(env, [airportParam]);
         await aggregateDailyStats(env, today);
         await updateRollingScores(env);
+        await updateLeaderboardStats(env);
         return new Response(JSON.stringify({ status: 'refreshed', airport: airportParam, results }), {
           headers: { 'content-type': 'application/json', ...corsHeaders(request) }
         });
@@ -176,6 +178,7 @@ export default {
       const results = await trackAirports(env, ALL_AIRPORTS.map(a => a.iata));
       await aggregateDailyStats(env, today);
       await updateRollingScores(env);
+      await updateLeaderboardStats(env);
       return new Response(JSON.stringify({ status: 'refreshed', airports: 'all', results }), {
         headers: { 'content-type': 'application/json', ...corsHeaders(request) }
       });
@@ -197,6 +200,27 @@ export default {
       if (cached) return cached;
 
       const data = await getReliabilityForRoute(env, route);
+      const response = new Response(JSON.stringify(data), {
+        headers: {
+          'content-type': 'application/json',
+          'Cache-Control': 'public, max-age=1800',
+          ...corsHeaders(request)
+        }
+      });
+      ctx.waitUntil(cache.put(cacheKey, response.clone()));
+      return response;
+    }
+
+    // Public route: leaderboard — every airline, all routes, full history,
+    // precomputed nightly by updateLeaderboardStats (see cron above).
+    if (url.pathname === '/api/leaderboard') {
+      const cache = caches.default;
+      const cacheKey = new Request(url.toString(), request);
+      let cached = await cache.match(cacheKey);
+      if (cached) return cached;
+
+      const raw = await env.FLIGHTS_KV.get('leaderboard_stats');
+      const data = raw ? JSON.parse(raw) : { airlines: [], last_updated: null };
       const response = new Response(JSON.stringify(data), {
         headers: {
           'content-type': 'application/json',
@@ -687,35 +711,37 @@ async function updateRollingScores(env) {
       if (s.airline_name) airlineName = s.airline_name;
     }
 
-    let value;
-    if (total < MIN_SAMPLE_SIZE) {
-      value = {
-        insufficient_data: true,
-        reason: `فقط ${total} پرواز در ${windowDays} روز اخیر ثبت شده`,
-        sample_size: total,
-        window_days: windowDays,
-        airline_name: airlineName,
-        last_updated: new Date().toISOString()
-      };
-    } else {
-      // نرخ به‌موقع بودن (OTP) فقط روی پروازهایی حساب می‌شود که واقعاً پرواز کرده‌اند —
-      // لغوشده‌ها از مخرج کسر می‌شوند. این هماهنگ با متدولوژی US DOT Air Travel
-      // Consumer Report و OAG/Cirium است: On-Time Performance و Cancellation Rate
-      // (Completion Factor) دو شاخص مستقل‌اند، نه یک کسر ادغام‌شده. در غیر این صورت
-      // یک ایرلاین با ۴ پرواز به‌موقع از ۴ پرواز انجام‌شده و ۶ لغو، به‌جای ۱۰۰٪ می‌شود ۴۰٪.
-      const completed = total - cancelled;
-      value = {
-        score_percent: completed > 0 ? Math.round((onTime / completed) * 1000) / 10 : null,
-        all_cancelled: completed === 0,
-        avg_delay_minutes: delaySamples > 0 ? Math.round((delaySum / delaySamples) * 10) / 10 : 0,
-        cancellation_rate: Math.round((cancelled / total) * 1000) / 10,
-        completed_flights: completed,
-        sample_size: total,
-        window_days: windowDays,
-        airline_name: airlineName,
-        last_updated: new Date().toISOString()
-      };
-    }
+    // نرخ به‌موقع بودن (OTP) فقط روی پروازهایی حساب می‌شود که واقعاً پرواز کرده‌اند —
+    // لغوشده‌ها از مخرج کسر می‌شوند. این هماهنگ با متدولوژی US DOT Air Travel
+    // Consumer Report و OAG/Cirium است: On-Time Performance و Cancellation Rate
+    // (Completion Factor) دو شاخص مستقل‌اند، نه یک کسر ادغام‌شده. در غیر این صورت
+    // یک ایرلاین با ۴ پرواز به‌موقع از ۴ پرواز انجام‌شده و ۶ لغو، به‌جای ۱۰۰٪ می‌شود ۴۰٪.
+    const completed = total - cancelled;
+
+    // خام (raw counts) همیشه — چه نمونه کافی باشد چه نه — برگردانده می‌شود.
+    // دلیل: فرانت‌اند برای مسیرهای چندفرودگاهی (مثلاً تهران = THR+IKA) چند
+    // route جدا را per-airline جمع می‌زند؛ اگر داده‌ی insufficient فقط
+    // sample_size داشته باشد، آن جمع نادرست می‌شود (یک مسیر با ۳ پرواز که
+    // به‌تنهایی insufficient است، وقتی با مسیر خواهرش جمع شود ممکن است
+    // مجموعاً کافی باشد).
+    const value = {
+      insufficient_data: total < MIN_SAMPLE_SIZE,
+      reason: total < MIN_SAMPLE_SIZE ? `فقط ${total} پرواز در ${windowDays} روز اخیر ثبت شده` : null,
+      score_percent: (total >= MIN_SAMPLE_SIZE && completed > 0) ? Math.round((onTime / completed) * 1000) / 10 : null,
+      all_cancelled: completed === 0,
+      avg_delay_minutes: delaySamples > 0 ? Math.round((delaySum / delaySamples) * 10) / 10 : 0,
+      cancellation_rate: total > 0 ? Math.round((cancelled / total) * 1000) / 10 : 0,
+      completed_flights: completed,
+      sample_size: total,
+      on_time_count: onTime,
+      delayed_count: delayed,
+      cancelled_count: cancelled,
+      delay_sum_minutes: delaySum,
+      delay_samples: delaySamples,
+      window_days: windowDays,
+      airline_name: airlineName,
+      last_updated: new Date().toISOString()
+    };
     puts.push(env.FLIGHTS_KV.put(`reliability_score:${route}:${airline}`, JSON.stringify(value)));
   }
 
@@ -754,6 +780,93 @@ async function getReliabilityForRoute(env, route) {
     classification: routeClassRaw ? JSON.parse(routeClassRaw) : null,
     airlines
   };
+}
+
+// Recomputes leaderboard_stats — one JSON blob covering EVERY airline
+// across ALL routes and the ENTIRE flight_log history (no rolling window,
+// unlike reliability_score:*). Built from daily_stats:*, which already only
+// ever contains landed/cancelled flights (see logCompletedFlights), so this
+// is naturally free of the "scheduled/active counted as on-time" bug that
+// client-side airlineStats() used to have.
+// Runs once a night (same cron tick as updateRollingScores) and on manual
+// /api/refresh, then /api/leaderboard just reads the precomputed blob —
+// scanning the full unbounded daily_stats:* prefix on every request would
+// get slower as history grows.
+async function updateLeaderboardStats(env) {
+  const byAirline = new Map();   // airline_iata -> accumulator + per-route breakdown
+
+  let cursor;
+  do {
+    const list = await env.FLIGHTS_KV.list({ prefix: 'daily_stats:', cursor });
+    for (const item of list.keys) {
+      const raw = await env.FLIGHTS_KV.get(item.name);
+      if (!raw) continue;
+      let s;
+      try { s = JSON.parse(raw); } catch { continue; }
+
+      // key shape: daily_stats:{route}:{airline}:{date}
+      const parts = item.name.split(':');
+      const route = parts[1], airline = parts[2];
+
+      if (!byAirline.has(airline)) {
+        byAirline.set(airline, {
+          total: 0, onTime: 0, delayed: 0, cancelled: 0, delaySum: 0, delaySamples: 0,
+          airlineName: null, routes: new Map()
+        });
+      }
+      const a = byAirline.get(airline);
+      a.total += s.total_flights;
+      a.onTime += s.on_time_count;
+      a.delayed += s.delayed_count;
+      a.cancelled += s.cancelled_count;
+      a.delaySum += s.sum_delay_minutes;
+      a.delaySamples += s.delay_samples;
+      if (s.airline_name) a.airlineName = s.airline_name;
+
+      if (!a.routes.has(route)) a.routes.set(route, { total: 0, onTime: 0, cancelled: 0 });
+      const r = a.routes.get(route);
+      r.total += s.total_flights;
+      r.onTime += s.on_time_count;
+      r.cancelled += s.cancelled_count;
+    }
+    cursor = list.list_complete ? undefined : list.cursor;
+  } while (cursor);
+
+  const airlines = [];
+  for (const [airlineIata, a] of byAirline) {
+    if (a.total < MIN_SAMPLE_SIZE) continue; // هماهنگ با airlineStats سمت فرانت (MIN_SAMPLE_SIZE=5)
+
+    const completed = a.total - a.cancelled;
+
+    // بدترین ۳ مسیر این ایرلاین — دست‌کم ۲ پرواز روی آن مسیر، مرتب بر اساس
+    // کمترین نرخ به‌موقعی. هماهنگ با airlineRouteBreakdown سمت فرانت (که این
+    // تابع جایگزینش می‌شود).
+    const routes = [...a.routes.entries()]
+      .map(([route, r]) => {
+        const routeCompleted = r.total - r.cancelled;
+        return { route, total: r.total, on_time_rate: routeCompleted ? Math.round((r.onTime / routeCompleted) * 1000) / 10 : 0 };
+      })
+      .filter(r => r.total >= 2)
+      .sort((x, y) => x.on_time_rate - y.on_time_rate)
+      .slice(0, 3);
+
+    airlines.push({
+      airline_iata: airlineIata,
+      airline_name: a.airlineName,
+      sample_size: a.total,
+      completed_flights: completed,
+      on_time_rate: completed > 0 ? Math.round((a.onTime / completed) * 1000) / 10 : 0,
+      avg_delay_minutes: a.delaySamples > 0 ? Math.round((a.delaySum / a.delaySamples) * 10) / 10 : 0,
+      cancellation_rate: a.total > 0 ? Math.round((a.cancelled / a.total) * 1000) / 10 : 0,
+      routes
+    });
+  }
+
+  airlines.sort((x, y) => y.on_time_rate - x.on_time_rate);
+
+  const value = { airlines, last_updated: new Date().toISOString() };
+  await env.FLIGHTS_KV.put('leaderboard_stats', JSON.stringify(value));
+  return airlines.length;
 }
 
 // ------------------------------------------------------------------
