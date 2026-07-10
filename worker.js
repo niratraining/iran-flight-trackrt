@@ -516,10 +516,14 @@ async function aggregateDailyStats(env, date) {
 
       const groupKey = `${rec.route}:${rec.airline_iata}`;
       if (!grouped.has(groupKey)) {
-        grouped.set(groupKey, { total: 0, onTime: 0, delayed: 0, cancelled: 0, delaySum: 0, delaySamples: 0 });
+        grouped.set(groupKey, { total: 0, onTime: 0, delayed: 0, cancelled: 0, delaySum: 0, delaySamples: 0, airlineName: rec.airline_name || null });
       }
       const g = grouped.get(groupKey);
       g.total++;
+      // Keep the most recent non-empty airline name we've seen for this
+      // airline_iata, so the frontend can display it without needing a
+      // separate IATA-code-to-name lookup table.
+      if (rec.airline_name) g.airlineName = rec.airline_name;
 
       if (rec.status === 'cancelled') {
         g.cancelled++;
@@ -548,7 +552,8 @@ async function aggregateDailyStats(env, date) {
       cancelled_count: g.cancelled,
       sum_delay_minutes: g.delaySum,
       delay_samples: g.delaySamples,
-      avg_delay_minutes: g.delaySamples > 0 ? Math.round((g.delaySum / g.delaySamples) * 10) / 10 : 0
+      avg_delay_minutes: g.delaySamples > 0 ? Math.round((g.delaySum / g.delaySamples) * 10) / 10 : 0,
+      airline_name: g.airlineName
     };
     puts.push(env.FLIGHTS_KV.put(`daily_stats:${route}:${airline}:${date}`, JSON.stringify(value)));
   }
@@ -642,7 +647,7 @@ async function updateRollingScores(env) {
     const windowDays = await getRouteWindowDays(route);
     const windowCutoff = tehranDateStr(new Date(Date.now() - (windowDays - 1) * 86400000));
 
-    let total = 0, onTime = 0, delayed = 0, cancelled = 0, delaySum = 0, delaySamples = 0;
+    let total = 0, onTime = 0, delayed = 0, cancelled = 0, delaySum = 0, delaySamples = 0, airlineName = null;
     for (const dailyKey of dailyKeys) {
       const date = dailyKey.split(':')[3];
       if (date < windowCutoff) continue;
@@ -655,6 +660,7 @@ async function updateRollingScores(env) {
       cancelled += s.cancelled_count;
       delaySum += s.sum_delay_minutes;
       delaySamples += s.delay_samples;
+      if (s.airline_name) airlineName = s.airline_name;
     }
 
     let value;
@@ -664,6 +670,7 @@ async function updateRollingScores(env) {
         reason: `فقط ${total} پرواز در ${windowDays} روز اخیر ثبت شده`,
         sample_size: total,
         window_days: windowDays,
+        airline_name: airlineName,
         last_updated: new Date().toISOString()
       };
     } else {
@@ -681,6 +688,7 @@ async function updateRollingScores(env) {
         completed_flights: completed,
         sample_size: total,
         window_days: windowDays,
+        airline_name: airlineName,
         last_updated: new Date().toISOString()
       };
     }
