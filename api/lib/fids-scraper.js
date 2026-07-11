@@ -224,12 +224,25 @@ function mapStatus(raw) {
   return 'unknown';
 }
 
+const TEHRAN_OFFSET_MS = 3.5 * 3600 * 1000; // UTC+3:30 — ایران DST نداره، این آفست ثابته
+
 function toIsoDateTime(dateStr, timeStr) {
   if (!timeStr) return '';
-  const today = new Date();
   const [hh, mm] = timeStr.split(':').map(n => parseInt(n, 10));
-  const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), hh, mm));
-  return d.toISOString();
+
+  // «امروز» باید بر اساس روز تقویمی تهران محاسبه بشه، نه ساعت سرور
+  // (که می‌تونه UTC باشه و نزدیک نیمه‌شب یک روز عقب/جلو بیفته).
+  const nowTehran = new Date(Date.now() + TEHRAN_OFFSET_MS);
+  const y = nowTehran.getUTCFullYear();
+  const m = nowTehran.getUTCMonth();
+  const day = nowTehran.getUTCDate();
+
+  // hh:mm روی fids.airport.ir ساعتِ محلیِ تهران‌ه، نه UTC.
+  // برای گرفتن UTC واقعی باید ۳:۳۰ ساعت کم بشه (قبلاً این کم‌کردن انجام
+  // نمی‌شد و همون چیزی بود که باعث می‌شد وقتی کلاینت دوباره تبدیل به وقت
+  // محلی می‌کرد، ساعت‌ها ۳:۳۰ جلوتر از واقعیت نمایش داده بشن).
+  const utcMillis = Date.UTC(y, m, day, hh, mm) - TEHRAN_OFFSET_MS;
+  return new Date(utcMillis).toISOString();
 }
 
 export function fidsToAviationstackShape(fidsData, myIata) {
