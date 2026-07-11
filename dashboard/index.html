@@ -1141,40 +1141,67 @@
   .rep-preview-lbl{ display:flex; align-items:center; gap:8px; font-size:12px; font-weight:800; color:var(--ink-faint); margin-bottom:12px; }
   .rep-preview-lbl svg{ width:14px; height:14px; color:var(--green); flex-shrink:0; }
 
-  .rep-doc{
-    background:var(--white); border:1.5px solid var(--line); border-radius:16px; overflow:hidden;
-    box-shadow:var(--shadow); font-family:'Vazirmatn', sans-serif;
+  /* ---------- FORMAL RESEARCH-STYLE REPORT DOCUMENT ----------
+     این سند دقیقاً همونیه که هم پیش‌نمایش می‌شه و هم عکس‌برداری و به PDF
+     A4 تبدیل می‌شه. عمداً جدی، بی‌رنگ (سیاه/سفید/طوسی) و شبیه یک گزارش
+     تحقیقاتی/سازمانیه؛ نه یک صفحه گرافیکی رنگی. */
+  :root{
+    --rep-ink:#15140F; --rep-line:#CFC9B8; --rep-line-soft:#E5E0D2; --rep-gray:#F4F2EA; --rep-gray-deep:#DEDACB;
   }
-  .rep-doc-head{ background:var(--ink); color:var(--white); padding:22px 22px 20px; position:relative; overflow:hidden; }
-  .rep-doc-head::before{ content:''; position:absolute; inset:0; background:repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 34px); }
-  .rep-doc-brand{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; position:relative; }
-  .rep-doc-brand b{ font-size:15px; font-weight:800; }
-  .rep-doc-brand span{ font-family:'JetBrains Mono', monospace; font-size:9.5px; color:rgba(255,253,248,0.5); letter-spacing:.02em; }
-  .rep-doc-title{ font-size:17.5px; font-weight:800; margin-bottom:8px; position:relative; }
-  .rep-doc-meta{ font-size:11px; color:rgba(255,253,248,0.6); font-weight:600; position:relative; display:flex; flex-wrap:wrap; gap:4px 14px; }
+  .rep-doc{
+    background:var(--white); border:1px solid var(--rep-line); overflow:hidden;
+    font-family:'Vazirmatn', sans-serif; color:var(--rep-ink);
+  }
+  .rep-doc-head{
+    background:var(--white); color:var(--rep-ink); padding:26px 26px 18px;
+    border-bottom:3px double var(--rep-ink);
+  }
+  .rep-doc-brand{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; padding-bottom:14px; border-bottom:1px solid var(--rep-line); }
+  .rep-doc-brand b{ font-size:14px; font-weight:800; letter-spacing:.01em; }
+  .rep-doc-brand span{ font-family:'JetBrains Mono', monospace; font-size:9px; color:var(--ink-faint); letter-spacing:.05em; }
+  .rep-doc-kicker{ font-family:'JetBrains Mono', monospace; direction:ltr; unicode-bidi:isolate; font-size:9.5px; font-weight:700; letter-spacing:.08em; color:var(--ink-faint); text-transform:uppercase; margin-bottom:9px; }
+  .rep-doc-title{ font-size:19px; font-weight:900; margin-bottom:16px; line-height:1.5; }
+  .rep-doc-meta-table{ width:100%; border-collapse:collapse; font-size:11px; }
+  .rep-doc-meta-table td{ padding:5px 0; border-bottom:1px solid var(--rep-line-soft); }
+  .rep-doc-meta-table td:first-child{ font-weight:700; color:var(--ink-faint); width:26%; white-space:nowrap; }
+  .rep-doc-meta-table td:last-child{ font-weight:700; color:var(--rep-ink); text-align:left; }
 
-  .rep-doc-body{ padding:20px 20px 22px; }
-  .rep-doc-forwhom{ font-size:12.5px; font-weight:700; color:var(--ink-soft); margin-bottom:16px; padding:11px 14px; background:var(--cream); border-radius:10px; border:1px solid var(--line); }
-  .rep-doc-forwhom b{ color:var(--ink); }
+  .rep-doc-body{ padding:24px 26px 26px; }
+  .rep-doc-forwhom{ font-size:12px; font-weight:700; color:var(--ink-soft); margin-bottom:18px; padding:10px 14px; background:var(--rep-gray); border:1px solid var(--rep-line); }
+  .rep-doc-forwhom b{ color:var(--rep-ink); }
 
-  .rep-doc-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:20px; }
-  .rep-doc-stat{ text-align:center; padding:12px 4px; background:var(--cream); border-radius:12px; border:1px solid var(--line); }
-  .rep-doc-stat b{ display:block; font-size:16px; font-weight:800; }
+  .rep-doc-section-title{
+    font-size:12.5px; font-weight:800; color:var(--rep-ink); margin:22px 0 11px; padding-bottom:7px;
+    border-bottom:1.5px solid var(--rep-ink); display:flex; align-items:baseline; gap:8px;
+  }
+  .rep-doc-section-title:first-child{ margin-top:0; }
+  .rep-doc-section-title .rep-doc-section-no{ font-family:'JetBrains Mono', monospace; direction:ltr; unicode-bidi:isolate; font-size:11px; color:var(--ink-faint); font-weight:700; }
+
+  .rep-doc-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:0; margin-bottom:6px; border:1px solid var(--rep-line); }
+  .rep-doc-stat{ text-align:center; padding:13px 4px; border-inline-start:1px solid var(--rep-line); }
+  .rep-doc-stat:first-child{ border-inline-start:none; }
+  .rep-doc-stat b{ display:block; font-size:18px; font-weight:800; }
   .rep-doc-stat span{ font-size:9px; font-weight:700; color:var(--ink-faint); }
 
-  .rep-subtitle{ font-size:12.5px; font-weight:800; color:var(--ink); margin:18px 0 10px; }
+  .rep-subtitle{ font-size:12px; font-weight:800; color:var(--rep-ink); margin:18px 0 9px; }
 
-  .rep-table{ width:100%; border-collapse:collapse; font-size:11.5px; }
-  .rep-table th{ background:var(--ink); color:var(--white); font-weight:700; padding:9px 7px; text-align:right; font-size:10px; }
-  .rep-table th:first-child{ border-radius:8px 0 0 0; }
-  .rep-table th:last-child{ border-radius:0 8px 0 0; }
-  .rep-table td{ padding:8px 7px; border-bottom:1px solid var(--line); font-weight:600; color:var(--ink); }
-  .rep-table tr:nth-child(even) td{ background:var(--cream); }
+  .rep-doc-chart{ border:1px solid var(--rep-line); padding:14px 14px 8px; margin:4px 0 4px; background:var(--white); }
+  .rep-doc-chart-title{ font-size:10.5px; font-weight:800; color:var(--ink-soft); margin-bottom:8px; }
+  .rep-doc-chart canvas{ max-width:100%; }
+
+  .rep-table{ width:100%; border-collapse:collapse; font-size:10.5px; border:1px solid var(--rep-ink); }
+  .rep-table th{ background:var(--rep-ink); color:var(--white); font-weight:700; padding:8px 7px; text-align:right; font-size:9.5px; border:1px solid var(--rep-ink); }
+  .rep-table td{ padding:7px 7px; border:1px solid var(--rep-line); font-weight:600; color:var(--rep-ink); }
+  .rep-table tr:nth-child(even) td{ background:var(--rep-gray); }
   .rep-table .mono{ font-family:'JetBrains Mono', monospace; direction:ltr; unicode-bidi:isolate; }
+  .rep-table-note{ font-size:9.5px; color:var(--ink-faint); font-weight:600; margin-top:6px; }
   .rep-bar-cell{ display:flex; align-items:center; gap:8px; }
-  .rep-bar-track{ flex:1; height:6px; border-radius:4px; background:var(--line); overflow:hidden; min-width:34px; }
-  .rep-bar-fill{ height:100%; border-radius:4px; background:var(--ink); }
-  .rep-doc-foot{ margin-top:18px; padding-top:14px; border-top:1px dashed var(--line); font-size:9.5px; color:var(--ink-faint); font-weight:600; line-height:1.8; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .rep-bar-track{ flex:1; height:6px; background:var(--rep-line-soft); overflow:hidden; min-width:34px; border:1px solid var(--rep-line); }
+  .rep-bar-fill{ height:100%; background:var(--rep-ink); }
+
+  .rep-doc-disclaimer{ margin-top:26px; padding-top:14px; border-top:1px solid var(--rep-line); font-size:10px; color:var(--ink-soft); font-weight:600; line-height:2; }
+  .rep-doc-disclaimer b{ color:var(--rep-ink); }
+  .rep-doc-foot{ margin-top:14px; padding-top:12px; border-top:1px solid var(--rep-line-soft); font-size:9px; color:var(--ink-faint); font-weight:600; line-height:1.8; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; font-family:'JetBrains Mono', monospace; direction:ltr; unicode-bidi:isolate; text-align:right; }
 
   .rep-download-btn{
     all:unset; box-sizing:border-box; width:100%; display:flex; align-items:center; justify-content:center; gap:9px;
@@ -1187,7 +1214,9 @@
   @media (max-width:420px){
     .rep-types{ grid-template-columns:1fr 1fr; }
     .rep-doc-stats{ grid-template-columns:repeat(2,1fr); }
-    .rep-doc-stat:nth-child(n+3){ margin-top:0; }
+    .rep-doc-stat:nth-child(n+3){ border-top:1px solid var(--rep-line); }
+    .rep-doc-stat:nth-child(even){ border-inline-start:1px solid var(--rep-line); }
+    .rep-doc-stat:nth-child(odd){ border-inline-start:none; }
   }
 </style>
 </head>
@@ -1306,27 +1335,6 @@
     <p><b>این یک پروژه تحقیقاتی مستقل است</b> — نه پلتفرم فروش بلیط، نه شریک تجاری هیچ ایرلاینی. فقط عدد، بدون رودربایستی.</p>
   </div>
 
-  <div class="pro-report-cta">
-    <div class="pro-report-badge">ابزار حرفه‌ای</div>
-    <div class="pro-report-head">
-      <div>
-        <h3 class="pro-report-title">گزارش‌گیری حرفه‌ای برای ایرلاین‌ها و چارترکنندگان</h3>
-        <p class="pro-report-sub">کارنامه ایرلاین‌ها، پرتاخیرترین پروازها، روند روزانه یا گزارش اختصاصی یک ایرلاین — بر اساس دادگان زنده، آماده خروجی PDF.</p>
-      </div>
-      <div class="pro-report-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3.5h7l5 5V19a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M14 3.5V8a1 1 0 0 0 1 1h4.5"/><path d="M8.5 13h7M8.5 16.2h7M8.5 9.8h3"/></svg>
-      </div>
-    </div>
-    <div class="pro-report-features">
-      <span class="pro-report-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>بازه دلخواه (امروز / هفته / ماه)</span>
-      <span class="pro-report-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>فیلتر مسیر و ایرلاین</span>
-      <span class="pro-report-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>پیش‌نمایش قبل از دانلود</span>
-      <span class="pro-report-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>خروجی PDF آماده ارائه</span>
-    </div>
-    <button type="button" class="pro-report-btn" onclick="openReportSheet()">
-      ساخت گزارش حرفه‌ای
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" transform="rotate(180 12 12)"/></svg>
-    </button>
   </div>
 </div>
 
@@ -1477,6 +1485,31 @@
     </div></div></div>
   </section>
 
+  <section id="proReportSection">
+    <div class="pro-report-cta">
+      <div class="pro-report-badge">ابزار حرفه‌ای</div>
+      <div class="pro-report-head">
+        <div>
+          <h3 class="pro-report-title">گزارش‌گیری حرفه‌ای برای ایرلاین‌ها و چارترکنندگان</h3>
+          <p class="pro-report-sub">کارنامه ایرلاین‌ها، پرتاخیرترین پروازها، روند روزانه یا گزارش اختصاصی یک ایرلاین — بر اساس دادگان زنده، آماده خروجی PDF.</p>
+        </div>
+        <div class="pro-report-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3.5h7l5 5V19a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M14 3.5V8a1 1 0 0 0 1 1h4.5"/><path d="M8.5 13h7M8.5 16.2h7M8.5 9.8h3"/></svg>
+        </div>
+      </div>
+      <div class="pro-report-features">
+        <span class="pro-report-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>بازه دلخواه (امروز / هفته / ماه)</span>
+        <span class="pro-report-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>فیلتر مسیر و ایرلاین</span>
+        <span class="pro-report-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>پیش‌نمایش قبل از دانلود</span>
+        <span class="pro-report-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>خروجی PDF رسمی و آماده ارائه</span>
+      </div>
+      <button type="button" class="pro-report-btn" onclick="openReportSheet()">
+        ساخت گزارش حرفه‌ای
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" transform="rotate(180 12 12)"/></svg>
+      </button>
+    </div>
+  </section>
+
 </main>
 
 <footer>
@@ -1504,6 +1537,10 @@
   <a href="#tableSection" data-target="tableSection">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h18M3 12h18M3 19h18"/></svg>
     جدول
+  </a>
+  <a href="#proReportSection" data-target="proReportSection">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3.5h7l5 5V19a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M14 3.5V8a1 1 0 0 0 1 1h4.5"/></svg>
+    گزارش
   </a>
 </div>
 
@@ -3326,26 +3363,114 @@ function docStats(items){
   return `<div class="rep-doc-stats">${items.map(([val, lbl]) =>
     `<div class="rep-doc-stat"><b class="num">${val}</b><span>${lbl}</span></div>`).join('')}</div>`;
 }
-function buildDocHead(titleFa, meta){
+function sectionTitle(no, label){
+  return `<div class="rep-doc-section-title"><span class="rep-doc-section-no mono">${String(no).padStart(2,'0')}</span><span>${label}</span></div>`;
+}
+// شناسه گزارش: یک کد کوتاه و پایدارِ ظاهراً رسمی، بر اساس نوع گزارش و
+// لحظه تولید — فقط جنبه ظاهری/رسمی داره، هیچ منطق سرور پشتش نیست.
+function reportDocId(type){
   const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const codes = { scorecard: 'SCR', delayed: 'DLY', trend: 'TRD', airline: 'ARL' };
+  return `BP-${codes[type] || 'RPT'}-${stamp}`;
+}
+function buildDocHead(titleFa, typeLabel, meta){
+  const now = new Date();
+  const rows = [
+    ['نوع گزارش', typeLabel],
+    ['بازه زمانی', meta.range],
+    ['مسیر/فیلتر', meta.route],
+    ['تهیه‌شده برای', meta.company || '—'],
+    ['شناسه سند', `<span class="mono">${meta.docId}</span>`],
+    ['تاریخ و ساعت تولید', `${fmtDate(now.toISOString())} · ${fmtTime(now.toISOString())}`]
+  ];
   return `<div class="rep-doc-head">
     <div class="rep-doc-brand"><b>بی‌پرده</b><span class="mono">BI-PARDE · FLIGHT INTELLIGENCE</span></div>
+    <div class="rep-doc-kicker">گزارش تحلیلی تاخیر پرواز · دادگان عمومی FIDS</div>
     <div class="rep-doc-title">${titleFa}</div>
-    <div class="rep-doc-meta">
-      <span>بازه: ${meta.range}</span>
-      <span>مسیر: ${meta.route}</span>
-      <span>تولید: ${fmtDate(now.toISOString())} · ${fmtTime(now.toISOString())}</span>
-    </div>
+    <table class="rep-doc-meta-table"><tbody>${rows.map(([k, v]) =>
+      `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</tbody></table>
   </div>`;
 }
-function buildDocFoot(flightCount){
+function buildDocDisclaimer(flightCount){
+  return `<div class="rep-doc-disclaimer">
+    <p><b>روش‌شناسی و منبع داده:</b> این گزارش بر اساس ${toFa(flightCount)} پرواز <b>نهایی‌شده</b> (نشسته یا لغوشده) در بازه انتخابی تهیه شده است. پروازهایی که هنوز انجام نشده‌اند در محاسبه نرخ به‌موقع‌بودن و میانگین تاخیر لحاظ نمی‌شوند تا نتیجه به نفع هیچ ایرلاینی جهت‌دار نشود. داده خام از سامانه اطلاعات پرواز (FIDS) فرودگاه‌های کشور برداشت و به‌صورت روزانه به‌روزرسانی می‌شود.</p>
+    <p><b>سلب مسئولیت:</b> «بی‌پرده» یک پروژه تحقیقاتی مستقل است، نماینده یا شریک تجاری هیچ ایرلاین یا فرودگاهی نیست و این سند صرفاً جنبه اطلاع‌رسانی دارد.</p>
+  </div>`;
+}
+function buildDocFoot(flightCount, pageNoteFa){
   return `<div class="rep-doc-foot">
-    <span>بر اساس ${toFa(flightCount)} پرواز نهایی‌شده (نشسته/لغوشده) از دادگان عمومی FIDS فرودگاه‌ها.</span>
-    <span>بی‌پرده · گزارش تحقیقاتی مستقل</span>
+    <span>bi-parde.ir · flight delay intelligence report</span>
+    <span>${pageNoteFa || ''}</span>
   </div>`;
 }
 function wrapDoc(headHtml, bodyInnerHtml){
   return `<div class="rep-doc" id="repDocNode">${headHtml}<div class="rep-doc-body">${bodyInnerHtml}</div></div>`;
+}
+
+// ---------- پیوست: ریز پروازها (شماره پرواز، ایرلاین، مسیر، تاخیر...) ----------
+// این بخش دقیقاً همون ریز گزارشی رو می‌ده که یک گزارش رسمی نیاز داره:
+// هر پرواز با شماره پروازش، نه فقط تجمیع‌شده. برای اینکه سند خیلی سنگین
+// نشه، حداکثر REP_APPENDIX_MAX ردیف چاپ می‌شه و بقیه در یک یادداشت اعلام
+// می‌شه (دادگان کامل همیشه در بخش «دادگان خام» صفحه در دسترسه).
+const REP_APPENDIX_MAX = 150;
+function flightDetailAppendix(flights){
+  const sorted = [...flights].sort((a, b) => new Date(a.dep_scheduled || 0) - new Date(b.dep_scheduled || 0));
+  const shown = sorted.slice(0, REP_APPENDIX_MAX);
+  const rows = shown.map((f, i) => `
+    <tr>
+      <td class="num">${toFa(i + 1)}</td>
+      <td>${fmtDate(f.dep_scheduled)}</td>
+      <td>${fmtWeekday(f.dep_scheduled)}</td>
+      <td class="num">${fmtTime(f.dep_scheduled)}</td>
+      <td>${f.airline || 'نامشخص'}</td>
+      <td class="mono">${f.flight_iata || '—'}</td>
+      <td class="mono">${faRoute(f.dep_iata + '-' + f.arr_iata)}</td>
+      <td class="num">${f.status === 'cancelled' ? '—' : (toFa(delayOf(f)) + '′')}</td>
+      <td>${f.status === 'cancelled' ? 'لغوشده' : (delayOf(f) > 0 ? 'تاخیردار' : 'به‌موقع')}</td>
+    </tr>`).join('');
+  const note = sorted.length > REP_APPENDIX_MAX
+    ? `<div class="rep-table-note">این پیوست به ${toFa(REP_APPENDIX_MAX)} ردیف نخست (از مجموع ${toFa(sorted.length)} پرواز این بازه) محدود شده است. فهرست کامل در بخش «دادگان خام» همین صفحه در دسترس است.</div>`
+    : `<div class="rep-table-note">مجموع ${toFa(sorted.length)} پرواز — فهرست کامل بازه انتخابی.</div>`;
+  return `
+    <table class="rep-table"><thead><tr>
+      <th>#</th><th>تاریخ</th><th>روز</th><th>ساعت</th><th>ایرلاین</th><th>شماره پرواز</th><th>مسیر</th><th>تاخیر</th><th>وضعیت</th>
+    </tr></thead><tbody>${rows}</tbody></table>
+    ${note}`;
+}
+
+// ---------- نمودار گزارش (Chart.js از قبل روی صفحه لود شده) ----------
+let repChartInstance = null;
+function buildDocChart(canvasId, kind, labels, values, axisLabel){
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  if (repChartInstance) { repChartInstance.destroy(); repChartInstance = null; }
+  repChartInstance = new Chart(ctx.getContext('2d'), {
+    type: kind,
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: '#15140F',
+        borderColor: '#15140F',
+        borderWidth: kind === 'line' ? 2 : 0,
+        pointRadius: kind === 'line' ? 2.5 : 0,
+        pointBackgroundColor: '#15140F',
+        fill: false,
+        barThickness: kind === 'bar' ? 16 : undefined
+      }]
+    },
+    options: {
+      animation: false,
+      responsive: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { font: { size: 9, family: 'Vazirmatn' }, color: '#15140F' }, grid: { color: '#E5E0D2' } },
+        y: { beginAtZero: true, title: { display: !!axisLabel, text: axisLabel, font: { size: 9.5 }, color: '#6E6A5C' }, ticks: { font: { size: 9 }, color: '#15140F' }, grid: { color: '#E5E0D2' } }
+      }
+    }
+  });
 }
 
 function generateReportPreview(){
@@ -3374,9 +3499,11 @@ function generateReportPreview(){
     return;
   }
 
-  const meta = { range: reportRangeLabel(reportRange), route: reportRouteLabel(origin, dest) };
+  const meta = { range: reportRangeLabel(reportRange), route: reportRouteLabel(origin, dest), company, docId: reportDocId(reportType) };
   const completedNonCancelled = flights.filter(f => f.status !== 'cancelled');
+  const TYPE_LABELS = { scorecard: 'کارنامه مقایسه‌ای ایرلاین‌ها', delayed: 'پرتاخیرترین پروازها', trend: 'روند روزانه تاخیر', airline: 'گزارش اختصاصی ایرلاین' };
   let titleFa = '', statsHtml = '', tableHtml = '';
+  let chartKind = 'bar', chartLabels = [], chartValues = [], chartAxis = '', chartTitle = '';
 
   if (reportType === 'scorecard') {
     titleFa = 'کارنامه مقایسه‌ای ایرلاین‌ها';
@@ -3400,6 +3527,9 @@ function generateReportPreview(){
         <td class="num">${toFa(Math.round(a.avgDelay))}′</td>
         <td class="num">${toFa(a.cancelledRate.toFixed(0))}٪</td>
       </tr>`).join('')}</tbody></table>`;
+    const top = rows.slice(0, 10);
+    chartKind = 'bar'; chartTitle = 'نرخ به‌موقع‌بودن به تفکیک ایرلاین (٪)'; chartAxis = 'درصد به‌موقع';
+    chartLabels = top.map(a => a.name); chartValues = top.map(a => Math.round(a.onTimeRate));
 
   } else if (reportType === 'delayed') {
     titleFa = 'پرتاخیرترین پروازها';
@@ -3413,16 +3543,20 @@ function generateReportPreview(){
       [toFa(cancelledCount), 'لغوشده (جدا)']
     ]);
     tableHtml = `<table class="rep-table"><thead><tr>
-      <th>#</th><th>تاریخ</th><th>ساعت</th><th>ایرلاین</th><th>مسیر</th><th>تاخیر</th>
+      <th>#</th><th>تاریخ</th><th>ساعت</th><th>ایرلاین</th><th>شماره پرواز</th><th>مسیر</th><th>تاخیر</th>
     </tr></thead><tbody>${list.map((f, i) => `
       <tr>
         <td class="num">${toFa(i + 1)}</td>
         <td>${fmtDate(f.dep_scheduled)}</td>
         <td class="num">${fmtTime(f.dep_scheduled)}</td>
         <td>${f.airline || '—'}</td>
+        <td class="mono">${f.flight_iata || '—'}</td>
         <td class="mono">${faRoute(f.dep_iata + '-' + f.arr_iata)}</td>
         <td>${repBar(delayOf(f), maxDelay)}</td>
       </tr>`).join('')}</tbody></table>`;
+    const top = list.slice(0, 10);
+    chartKind = 'bar'; chartTitle = 'میزان تاخیر پرتاخیرترین پروازها (دقیقه)'; chartAxis = 'دقیقه تاخیر';
+    chartLabels = top.map(f => f.flight_iata || faRoute(f.dep_iata + '-' + f.arr_iata)); chartValues = top.map(f => Math.round(delayOf(f)));
 
   } else if (reportType === 'trend') {
     titleFa = 'روند روزانه تاخیر';
@@ -3446,6 +3580,8 @@ function generateReportPreview(){
         <td class="num">${toFa(d.onTimeRate.toFixed(0))}٪</td>
         <td>${repBar(d.avgDelay, maxAvg)}</td>
       </tr>`).join('')}</tbody></table>`;
+    chartKind = 'line'; chartTitle = 'میانگین تاخیر روزانه (دقیقه)'; chartAxis = 'دقیقه';
+    chartLabels = days.map(d => d.key.slice(5)); chartValues = days.map(d => Math.round(d.avgDelay));
 
   } else if (reportType === 'airline') {
     titleFa = `گزارش اختصاصی — ${airline}`;
@@ -3473,26 +3609,44 @@ function generateReportPreview(){
       ${topDelayed.length ? `
       <div class="rep-subtitle">پرتاخیرترین پروازهای ${airline} در این بازه</div>
       <table class="rep-table"><thead><tr>
-        <th>#</th><th>تاریخ</th><th>مسیر</th><th>تاخیر</th>
+        <th>#</th><th>تاریخ</th><th>شماره پرواز</th><th>مسیر</th><th>تاخیر</th>
       </tr></thead><tbody>${topDelayed.map((f, i) => `
         <tr>
           <td class="num">${toFa(i + 1)}</td>
           <td>${fmtDate(f.dep_scheduled)}</td>
+          <td class="mono">${f.flight_iata || '—'}</td>
           <td class="mono">${faRoute(f.dep_iata + '-' + f.arr_iata)}</td>
           <td class="num">${toFa(delayOf(f))}′</td>
         </tr>`).join('')}</tbody></table>` : ''}`;
+    const top = routes.slice(0, 10);
+    chartKind = 'bar'; chartTitle = `نرخ به‌موقع‌بودن ${airline} به تفکیک مسیر (٪)`; chartAxis = 'درصد به‌موقع';
+    chartLabels = top.map(r => faRoute(r.route)); chartValues = top.map(r => Math.round(r.onTimeRate));
   }
 
-  const headHtml = buildDocHead(titleFa, meta);
+  const headHtml = buildDocHead(titleFa, TYPE_LABELS[reportType] || titleFa, meta);
   const bodyInner = `
-    ${company ? `<div class="rep-doc-forwhom">تهیه‌شده برای: <b>${escapeHtml(company)}</b></div>` : ''}
+    ${sectionTitle(1, 'خلاصه اجرایی')}
     ${statsHtml}
+
+    ${sectionTitle(2, chartTitle || 'نمای کلی داده')}
+    <div class="rep-doc-chart">
+      <div class="rep-doc-chart-title">${meta.range} · ${meta.route}</div>
+      <canvas id="repChartCanvas" width="680" height="230"></canvas>
+    </div>
+
+    ${sectionTitle(3, 'جدول تحلیلی')}
     ${tableHtml}
+
+    ${sectionTitle(4, 'پیوست — ریز پروازها')}
+    ${flightDetailAppendix(flights)}
+
+    ${buildDocDisclaimer(flights.length)}
     ${buildDocFoot(flights.length)}`;
 
   previewArea.innerHTML = wrapDoc(headHtml, bodyInner);
   wrap.style.display = 'block';
   dlBtn.style.display = 'flex';
+  if (chartLabels.length) buildDocChart('repChartCanvas', chartKind, chartLabels, chartValues, chartAxis);
   wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -3528,6 +3682,23 @@ function pdfFilename(){
   const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
   return `biparde-report-${reportType}-${stamp}.pdf`;
 }
+// نقاط برش امن رو بین صفحه‌ها پیدا می‌کنه — یعنی هیچ‌وقت وسط یک ردیف
+// جدول، بلوک خلاصه اجرایی یا نمودار رو نمی‌بره؛ اگه یک بلوک «غیرقابل‌برش»
+// از مرز صفحه رد بشه، کل اون بلوک به صفحه بعد منتقل می‌شه (شبیه صفحه‌بندی
+// واقعی یک سند رسمی، نه یک اسکرین‌شات کورکورانه).
+function computeSliceBoundaries(canvasHeight, pageHeightPx, unsplitRegions){
+  const boundaries = [];
+  let cursor = 0;
+  while (cursor < canvasHeight - 1) {
+    let bottom = Math.min(cursor + pageHeightPx, canvasHeight);
+    const breaker = unsplitRegions.find(r => r.top < bottom && r.bottom > bottom && r.top > cursor + 4);
+    if (breaker) bottom = breaker.top;
+    if (bottom <= cursor) bottom = Math.min(cursor + pageHeightPx, canvasHeight); // fallback: بلوک از یک صفحه بزرگ‌تره
+    boundaries.push([cursor, bottom]);
+    cursor = bottom;
+  }
+  return boundaries;
+}
 async function downloadReportPDF(){
   const node = document.getElementById('repDocNode');
   if (!node) return;
@@ -3539,24 +3710,60 @@ async function downloadReportPDF(){
   try {
     await ensureReportLibs();
     if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
-    const canvas = await html2canvas(node, { scale: 2, backgroundColor: '#FFFDF8', useCORS: true });
+
+    // موقعیت بلوک‌های «غیرقابل‌برش» رو نسبت به بالای سند، در مختصات CSS
+    // اندازه می‌گیریم — قبل از عکس‌برداری، چون بعدش مقیاسش می‌بریم روی
+    // پیکسل‌های کنواس.
+    const nodeRect = node.getBoundingClientRect();
+    const unsplitSelectors = 'tr, .rep-doc-stats, .rep-doc-chart, .rep-doc-head, .rep-doc-disclaimer';
+    const cssRegions = [...node.querySelectorAll(unsplitSelectors)].map(el => {
+      const r = el.getBoundingClientRect();
+      return { top: r.top - nodeRect.top, bottom: r.bottom - nodeRect.top };
+    });
+
+    const canvas = await html2canvas(node, { scale: 2, backgroundColor: '#FFFFFF', useCORS: true });
+    const canvasScale = canvas.width / node.offsetWidth;
+    const unsplitRegions = cssRegions.map(r => ({ top: r.top * canvasScale, bottom: r.bottom * canvasScale }));
+
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    let heightLeft = imgHeight;
-    let position = 0;
-    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
+    const pageWidthMM = pdf.internal.pageSize.getWidth();
+    const pageHeightMM = pdf.internal.pageSize.getHeight();
+    const footerMM = 9; // فضای پاورقی شماره صفحه، خارج از تصویر سند
+    const pxPerMM = canvas.width / pageWidthMM;
+    const pageHeightPx = (pageHeightMM - footerMM) * pxPerMM;
+
+    const boundaries = computeSliceBoundaries(canvas.height, pageHeightPx, unsplitRegions);
+    const totalPages = boundaries.length;
+
+    boundaries.forEach(([top, bottom], i) => {
+      const sliceHeightPx = bottom - top;
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = canvas.width;
+      sliceCanvas.height = sliceHeightPx;
+      const sctx = sliceCanvas.getContext('2d');
+      sctx.fillStyle = '#FFFFFF';
+      sctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+      sctx.drawImage(canvas, 0, top, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+      const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+      const sliceHeightMM = sliceHeightPx / pxPerMM;
+
+      if (i > 0) pdf.addPage();
+      pdf.addImage(sliceData, 'JPEG', 0, 0, pageWidthMM, sliceHeightMM);
+
+      // پاورقی رسمی: خط جداکننده + شماره صفحه (فقط لاتین/عدد، چون جی‌اس‌پی‌دی‌اف
+      // متن فارسی رو بدون شکل‌دهی حروف درست رندر نمی‌کنه)
+      pdf.setDrawColor(207, 201, 184);
+      pdf.setLineWidth(0.2);
+      pdf.line(10, pageHeightMM - footerMM + 2, pageWidthMM - 10, pageHeightMM - footerMM + 2);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+      pdf.setTextColor(120, 115, 100);
+      pdf.text('bi-parde.ir - flight delay intelligence report', 10, pageHeightMM - 4);
+      pdf.text(`Page ${i + 1} / ${totalPages}`, pageWidthMM - 10, pageHeightMM - 4, { align: 'right' });
+    });
+
+    pdf.setProperties({ title: pdfFilename(), creator: 'bi-parde.ir' });
     pdf.save(pdfFilename());
   } catch (err) {
     console.error('خطا در ساخت PDF گزارش:', err);
