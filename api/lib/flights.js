@@ -223,6 +223,10 @@ export async function getAllFlights() {
   }
 
   return {
+    // نشانه‌ی ساده برای تایید این‌که نسخه‌ی جدید (merge بر پایه‌ی تاریخ)
+    // واقعاً دیپلوی شده — کافیه /api/flights رو مستقیم باز کنی و این
+    // فیلد رو ببینی؛ اگه نبود یعنی هنوز نسخه‌ی قدیمی سرو می‌شه.
+    code_version: 'getAllFlights-date-merge-2026-07-11',
     updated_at: updatedAt || new Date().toISOString(),
     count: latestByFlight.size,
     flights: Array.from(latestByFlight.values())
