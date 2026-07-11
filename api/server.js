@@ -20,7 +20,8 @@ import {
   getAllFlights,
   getReliabilityForRoute,
   runNightlyJob,
-  manualRefresh
+  manualRefresh,
+  refreshFlightsOnly
 } from './lib/flights.js';
 import { kv } from './lib/kv.js';
 
@@ -210,6 +211,35 @@ async function main() {
       running = false;
     }
   }, { timezone: 'Asia/Tehran' });
+
+  // ------------------------------------------------------------------
+  // فچ خام هر ۱۵ دقیقه — فقط trackAirports (بدون aggregateDailyStats/
+  // updateRollingScores که فول‌اسکن مونگو می‌زنن). فقط کش /api/flights
+  // رو پاک می‌کنه، پس جدول/وضعیت زنده زود به‌روز می‌شه بدون فشار اضافه
+  // روی دیتابیس. aviationstack حذف شده، پس محدودیت کوتا نداریم؛
+  // فرودگاه‌های بدون پوشش FIDS (فعلاً IKA, KIH, ZBR) فقط با ۰ پرواز
+  // 'ok' برمی‌گردن، نه خطا.
+  let rawRunning = false;
+  cron.schedule('*/15 * * * *', async () => {
+    if (rawRunning) return;
+    rawRunning = true;
+    console.log('Running 15-minute raw flight refresh...');
+    try {
+      await refreshFlightsOnly(ALL_AIRPORTS.map(a => a.iata));
+      cacheDelete('/api/flights');
+      console.log('15-minute raw flight refresh finished.');
+    } catch (err) {
+      console.error('15-minute raw flight refresh failed:', err);
+    } finally {
+      rawRunning = false;
+    }
+  }, { timezone: 'Asia/Tehran' });
+
+  // آمار/اعتمادپذیری/کارنامه دیگه هر ۳۰ دقیقه اجرا نمی‌شه — فقط شبی
+  // یه‌بار با کرون شبانه‌ی بالا (۲۳:۵۹) که runNightlyJob صداش می‌زنه.
+  // منطقیه چون این محاسبات فول‌اسکن مونگو می‌زنن و اعتمادپذیری نیازی به
+  // آپدیت لحظه‌ای نداره؛ فقط جدول/وضعیت زنده‌ی پرواز با کرون ۱۵ دقیقه‌ی
+  // پایین به‌روز می‌مونه.
 }
 
 main().catch(err => {
