@@ -173,11 +173,18 @@ export async function getAllFlights() {
       const airline = f.airline || {};
       const flightInfo = f.flight || {};
 
-      const flightKey = `${flightInfo.iata || flightInfo.icao || 'unknown'}_${dep.scheduled || ''}`;
+      const flightIata = flightInfo.iata || flightInfo.icao || 'unknown';
+      // کلید بر پایه‌ی تاریخِ پایدار (stableFlightDate)، نه ساعت خامِ
+      // dep.scheduled: چون حالا فقط طرفِ شناخته‌شده‌ی هر بورد ساعت داره
+      // (رفع بالا در fids-scraper.js)، dep.scheduled روی بورد ورودی
+      // همیشه خالیه — قبلاً همین باعث می‌شد یک پرواز، بسته به این‌که از
+      // کدوم بورد گرفته شده، کلیدهای متفاوت بگیره و چند بار تکرار بشه.
+      const date = stableFlightDate(dep.scheduled, arr.scheduled);
+      const flightKey = `${flightIata}_${date}`;
 
-      const record = {
+      const partial = {
         checked_at: lastRun,
-        flight_iata: flightInfo.iata || '',
+        flight_iata: flightIata,
         airline: airline.name || 'Unknown',
         dep_iata: dep.iata || '',
         dep_scheduled: dep.scheduled || '',
@@ -193,9 +200,21 @@ export async function getAllFlights() {
       };
 
       const existing = latestByFlight.get(flightKey);
-      if (!existing || record.checked_at > existing.checked_at) {
-        latestByFlight.set(flightKey, record);
+      if (!existing) {
+        latestByFlight.set(flightKey, partial);
+        continue;
       }
+
+      // merge، نه overwrite کامل: دقیقاً همون فلسفه‌ای که برای
+      // flight_log/upsertFlightRecord پیاده شده — دو دیدِ جزئیِ یک پرواز
+      // (بورد خروجیِ مبدأ + بورد ورودیِ مقصد) باید با هم جمع بشن، نه
+      // این‌که یکی جای اون یکی رو بگیره و نصف اطلاعات گم بشه.
+      const merged = { ...existing };
+      for (const [k, v] of Object.entries(partial)) {
+        if (v !== null && v !== undefined && v !== '') merged[k] = v;
+      }
+      merged.checked_at = partial.checked_at > existing.checked_at ? partial.checked_at : existing.checked_at;
+      latestByFlight.set(flightKey, merged);
     }
   }
 

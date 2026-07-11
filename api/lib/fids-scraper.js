@@ -360,12 +360,17 @@ export function fidsToAviationstackShape(fidsData, myIata) {
         : '';
       const delayMinutes = computeDelayMinutes(scheduledIso, actualIso);
 
-      const dep = isArrival
-        ? { iata: otherIata, scheduled: scheduledIso, estimated: '', actual: actualIso, delay: null }
-        : { iata: myIata, scheduled: scheduledIso, estimated: '', actual: actualIso, delay: delayMinutes };
-      const arr = isArrival
-        ? { iata: myIata, scheduled: scheduledIso, estimated: '', actual: actualIso, delay: delayMinutes }
-        : { iata: otherIata, scheduled: scheduledIso, estimated: '', actual: actualIso, delay: null };
+      // این بورد فقط برای «طرفِ من» (فرودگاهی که همین بورد رو داریم) ساعت
+      // واقعی داره؛ ساعتِ طرفِ دیگه (مبدأ/مقصدِ دیگه) رو اصلاً نمی‌دونیم.
+      // قبلاً هر دو طرف با همین scheduledIso/actualIso پر می‌شدن —
+      // یعنی روی بورد ورودی، dep.scheduled (ساعت خروج از مبدأ) با ساعتِ
+      // نشست جعل می‌شد؛ روی بورد خروجی هم برعکسش. نتیجه: getAllFlights
+      // برای هر پرواز چند کلید مختلف می‌ساخت و رکوردها تکراری می‌شدن.
+      const known = { iata: myIata, scheduled: scheduledIso, estimated: '', actual: actualIso, delay: delayMinutes };
+      const unknown = { iata: otherIata, scheduled: '', estimated: '', actual: '', delay: null };
+
+      const dep = isArrival ? unknown : known;
+      const arr = isArrival ? known : unknown;
 
       out.push({
         flight: { iata: row.flight_no || '', icao: '' },
