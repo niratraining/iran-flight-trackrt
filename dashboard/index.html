@@ -1137,9 +1137,95 @@
   .rep-generate-btn.loading svg, .rep-download-btn.loading svg{ animation:rep-spin .9s linear infinite; }
   @keyframes rep-spin{ to{ transform:rotate(360deg); } }
 
+  /* ---------- CUSTOM DATE RANGE BOX (Jalali / Gregorian) ---------- */
+  .rep-custom-date{
+    margin-top:10px; background:var(--white); border:1.5px solid var(--line); border-radius:16px;
+    padding:14px; box-shadow:0 4px 14px rgba(22,21,15,0.04);
+  }
+  .rcd-caltoggle{
+    display:flex; gap:4px; background:var(--cream); border:1px solid var(--line); border-radius:11px; padding:3px; margin-bottom:12px;
+  }
+  .rcd-cal-btn{
+    all:unset; box-sizing:border-box; flex:1; text-align:center; cursor:pointer;
+    font-size:12px; font-weight:800; color:var(--ink-faint); padding:8px 6px; border-radius:8px;
+    transition:background .15s ease, color .15s ease;
+  }
+  .rcd-cal-btn.active{ background:var(--ink); color:var(--white); }
+  .rcd-fields{ display:flex; align-items:center; gap:8px; }
+  .rcd-field{
+    all:unset; box-sizing:border-box; flex:1; min-width:0; cursor:pointer; text-align:right;
+    background:var(--paper); border:1.5px solid var(--line); border-radius:12px; padding:9px 12px;
+    display:flex; flex-direction:column; gap:3px; transition:border-color .15s ease, background .15s ease;
+  }
+  .rcd-field:hover, .rcd-field.rcd-open{ border-color:var(--yellow-deep); background:var(--yellow-pale); }
+  .rcd-field-lbl{ font-size:9.5px; font-weight:800; color:var(--ink-faint); letter-spacing:.02em; }
+  .rcd-field-val{ font-size:12.5px; font-weight:800; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rcd-field-val.placeholder{ color:var(--ink-faint); font-weight:600; }
+  .rcd-arrow{ flex:0 0 auto; color:var(--ink-faint); font-size:13px; }
+
+  .rcd-popover{
+    margin-top:10px; border:1.5px solid var(--line); border-radius:14px; background:var(--paper);
+    padding:12px; animation:rcd-pop-in .15s ease;
+  }
+  @keyframes rcd-pop-in{ from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:translateY(0); } }
+  .rcd-pop-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .rcd-pop-nav{
+    all:unset; box-sizing:border-box; width:30px; height:30px; border-radius:9px; cursor:pointer;
+    background:var(--white); border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; color:var(--ink);
+  }
+  .rcd-pop-nav:hover{ border-color:var(--line-strong); }
+  .rcd-pop-nav svg{ width:14px; height:14px; }
+  .rcd-pop-title{ font-size:13px; font-weight:800; color:var(--ink); }
+  .rcd-pop-target{ font-size:10.5px; font-weight:700; color:var(--ink-faint); margin-bottom:8px; text-align:center; }
+  .rcd-weekdays{ display:grid; grid-template-columns:repeat(7,1fr); gap:2px; margin-bottom:4px; }
+  .rcd-weekdays span{ text-align:center; font-size:9.5px; font-weight:800; color:var(--ink-faint); padding:4px 0; }
+  .rcd-days{ display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+  .rcd-day{
+    all:unset; box-sizing:border-box; text-align:center; padding:8px 0; border-radius:9px; cursor:pointer;
+    font-size:11.5px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums;
+    transition:background .12s ease, color .12s ease;
+  }
+  .rcd-day:hover{ background:var(--yellow-pale); }
+  .rcd-day.rcd-empty{ visibility:hidden; cursor:default; }
+  .rcd-day.rcd-today{ box-shadow:inset 0 0 0 1.5px var(--yellow-deep); }
+  .rcd-day.rcd-selected{ background:var(--ink); color:var(--white); }
+  .rcd-day.rcd-selected.rcd-today{ box-shadow:none; }
+  .rcd-day.rcd-in-range{ background:var(--yellow-pale); }
+  .rcd-hint{ font-size:10.5px; color:var(--ink-faint); font-weight:600; margin-top:9px; text-align:center; }
+
   .rep-preview-wrap{ margin-top:22px; border-top:2px dashed var(--line); padding-top:20px; }
   .rep-preview-lbl{ display:flex; align-items:center; gap:8px; font-size:12px; font-weight:800; color:var(--ink-faint); margin-bottom:12px; }
   .rep-preview-lbl svg{ width:14px; height:14px; color:var(--green); flex-shrink:0; }
+
+  /* ---------- PDF PREVIEW BOX (shows the actual generated PDF, not the HTML) ---------- */
+  .rep-pdf-box{
+    border:1.5px solid var(--line); border-radius:16px; overflow:hidden; background:var(--white);
+    box-shadow:0 6px 20px rgba(22,21,15,0.06);
+  }
+  .rpp-head{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:11px 14px; background:var(--cream); border-bottom:1.5px solid var(--line);
+  }
+  .rpp-head-info{ display:flex; align-items:center; gap:8px; min-width:0; }
+  .rpp-head-info svg{ width:14px; height:14px; color:var(--green); flex-shrink:0; }
+  .rpp-head-title{ font-size:11.5px; font-weight:800; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rpp-newtab{
+    all:unset; box-sizing:border-box; cursor:pointer; flex-shrink:0; display:flex; align-items:center; gap:5px;
+    font-size:10.5px; font-weight:700; color:var(--ink-soft); padding:5px 9px; border-radius:8px; border:1.5px solid var(--line); background:var(--white);
+  }
+  .rpp-newtab:hover{ border-color:var(--line-strong); color:var(--ink); }
+  .rpp-newtab svg{ width:11px; height:11px; }
+  .rpp-frame-wrap{ position:relative; width:100%; aspect-ratio:210/297; background:var(--rep-gray); }
+  .rpp-frame-wrap iframe{ position:absolute; inset:0; width:100%; height:100%; border:none; }
+  .rep-loading-box{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
+    padding:44px 20px; border:1.5px dashed var(--line); border-radius:16px; background:var(--white);
+  }
+  .rep-loading-spin{
+    width:26px; height:26px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--ink);
+    animation:rep-spin .8s linear infinite;
+  }
+  .rep-loading-box span{ font-size:12px; font-weight:700; color:var(--ink-soft); }
 
   /* ---------- FORMAL RESEARCH-STYLE REPORT DOCUMENT ----------
      این سند دقیقاً همونیه که هم پیش‌نمایش می‌شه و هم عکس‌برداری و به PDF
@@ -1608,6 +1694,40 @@
         <button type="button" class="rep-chip" data-range="7d" onclick="setReportRange('7d', this)">۷ روز اخیر</button>
         <button type="button" class="rep-chip active" data-range="30d" onclick="setReportRange('30d', this)">۳۰ روز اخیر</button>
         <button type="button" class="rep-chip" data-range="all" onclick="setReportRange('all', this)">کل دادگان موجود</button>
+        <button type="button" class="rep-chip" data-range="custom" onclick="setReportRange('custom', this)">بازه دلخواه</button>
+      </div>
+
+      <div class="rep-custom-date" id="repCustomDateBox" style="display:none;">
+        <div class="rcd-caltoggle" id="rcdCalToggle">
+          <button type="button" class="rcd-cal-btn active" data-cal="jalali" onclick="setCalSystem('jalali', this)">تقویم شمسی</button>
+          <button type="button" class="rcd-cal-btn" data-cal="gregorian" onclick="setCalSystem('gregorian', this)">تقویم میلادی</button>
+        </div>
+        <div class="rcd-fields">
+          <button type="button" class="rcd-field" id="rcdFromBtn" onclick="toggleDatePopover('from')">
+            <span class="rcd-field-lbl">از تاریخ</span>
+            <span class="rcd-field-val placeholder" id="rcdFromVal">انتخاب کنید</span>
+          </button>
+          <span class="rcd-arrow">←</span>
+          <button type="button" class="rcd-field" id="rcdToBtn" onclick="toggleDatePopover('to')">
+            <span class="rcd-field-lbl">تا تاریخ</span>
+            <span class="rcd-field-val placeholder" id="rcdToVal">انتخاب کنید</span>
+          </button>
+        </div>
+        <div class="rcd-popover" id="rcdPopover" style="display:none;">
+          <div class="rcd-pop-target" id="rcdPopTarget"></div>
+          <div class="rcd-pop-head">
+            <button type="button" class="rcd-pop-nav" onclick="rcdChangeMonth(-1)" aria-label="ماه قبل">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 6l-6 6 6 6"/></svg>
+            </button>
+            <div class="rcd-pop-title" id="rcdPopTitle"></div>
+            <button type="button" class="rcd-pop-nav" onclick="rcdChangeMonth(1)" aria-label="ماه بعد">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+          <div class="rcd-weekdays" id="rcdWeekdays"></div>
+          <div class="rcd-days" id="rcdDays"></div>
+          <div class="rcd-hint">ابتدا «از تاریخ» را انتخاب کنید، سپس «تا تاریخ» را</div>
+        </div>
       </div>
     </div>
 
@@ -1652,7 +1772,7 @@
     <div class="rep-preview-wrap" id="repPreviewWrap" style="display:none;">
       <div class="rep-preview-lbl">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>
-        پیش‌نمایش گزارش
+        پیش‌نمایش گزارش (فایل PDF نهایی)
       </div>
       <div id="repPreviewArea"></div>
       <button type="button" class="rep-download-btn" id="repDownloadBtn" style="display:none;" onclick="downloadReportPDF()">
@@ -1663,6 +1783,12 @@
 
   </div>
 </div>
+
+<!-- سند گزارش، همیشه بیرون از دید (خارج از صفحه) رندر می‌شه — دقیقاً همون
+     چیزیه که html2canvas ازش عکس می‌گیره و به PDF تبدیل می‌شه. کاربر دیگه
+     این HTML رو مستقیم نمی‌بینه؛ فقط PDF واقعی تولیدشده رو توی جعبه
+     پیش‌نمایش (iframe) می‌بینه، تا پیش‌نمایش دقیقاً همون فایل نهایی باشه. -->
+<div id="repDocBuildArea" style="position:fixed; left:-10000px; top:0; width:520px; pointer-events:none;" aria-hidden="true"></div>
 
 <!-- Chart.js عمداً اینجاست، نه توی <head> — اونجا کل رندر HTML رو تا وقتی
      این فایل خارجی دانلود می‌شد بلاک می‌کرد (کاربر تا اون لحظه هیچی، حتی
@@ -3191,8 +3317,14 @@ function renderFlightData(json){
    landed یا cancelled شدن وارد محاسبه می‌شن.
    ================================================================== */
 let reportType = 'scorecard';   // scorecard | delayed | trend | airline
-let reportRange = '30d';        // today | 7d | 30d | all
+let reportRange = '30d';        // today | 7d | 30d | all | custom
 let reportLimit = 25;
+
+// بازه دلخواه: دو تاریخ واقعی (نصف‌شب محلی) که کاربر از تقویم شمسی یا
+// میلادی انتخاب کرده — صرف‌نظر از تقویمی که برای انتخاب استفاده شده،
+// همیشه به‌صورت یک شیء Date معمولی نگه داشته می‌شن.
+let customStartDate = null;
+let customEndDate = null;
 
 function setReportType(type, btn){
   reportType = type;
@@ -3205,6 +3337,13 @@ function setReportRange(range, btn){
   reportRange = range;
   document.querySelectorAll('#repRangeChips .rep-chip').forEach(el => el.classList.remove('active'));
   btn.classList.add('active');
+  const box = document.getElementById('repCustomDateBox');
+  if (range === 'custom') {
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+    document.getElementById('rcdPopover').style.display = 'none';
+  }
 }
 function setReportLimit(limit, btn){
   reportLimit = limit;
@@ -3222,6 +3361,196 @@ function closeReportSheet(){
   document.getElementById('reportSheetOverlay').classList.remove('open');
   document.getElementById('reportSheet').classList.remove('open');
   document.body.style.overflow = '';
+}
+
+/* ==================================================================
+   تقویم دوگانه (شمسی/میلادی) برای انتخاب بازه دلخواه گزارش
+   تبدیل شمسی↔میلادی با الگوریتم استاندارد مبتنی بر شماره روز ژولینی
+   (Julian Day Number) — کاملاً سمت کلاینت، بدون هیچ کتابخانه خارجی.
+   ================================================================== */
+function rcdDiv(a, b){ return (a % b === 0 || (a < 0) === (b < 0)) ? Math.trunc(a / b) : -Math.trunc(-a / b); }
+function rcdMod(a, b){ return a - rcdDiv(a, b) * b; }
+const RCD_JALALI_BREAKS = [-61,9,38,199,426,686,756,818,1111,1181,1210,1635,2060,2097,2192,2262,2324,2394,2456,3178];
+function rcdJalCal(jy){
+  const bl = RCD_JALALI_BREAKS.length;
+  const gy = jy + 621;
+  let leapJ = -14, jp = RCD_JALALI_BREAKS[0], jump = 0;
+  for (let i = 1; i < bl; i++) {
+    const jm = RCD_JALALI_BREAKS[i];
+    jump = jm - jp;
+    if (jy < jm) break;
+    leapJ += rcdDiv(jump, 33) * 8 + rcdDiv(rcdMod(jump, 33), 4);
+    jp = jm;
+  }
+  let n = jy - jp;
+  leapJ += rcdDiv(n, 33) * 8 + rcdDiv(rcdMod(n, 33) + 3, 4);
+  if (rcdMod(jump, 33) === 4 && (jump - n) === 4) leapJ += 1;
+  const leapG = rcdDiv(gy, 4) - rcdDiv(rcdDiv(gy, 100) + 1, 4) * 3 - 150;
+  const march = 20 + leapJ - leapG;
+  if ((jump - n) < 6) n = n - jump + rcdDiv(jump + 4, 33) * 33;
+  let leap = rcdMod(rcdMod(n + 1, 33) - 1, 4);
+  if (leap === -1) leap = 4;
+  return { leap, gy, march };
+}
+function rcdG2d(gy, gm, gd){
+  let d = rcdDiv((gy + rcdDiv(gm - 8, 6) + 100100) * 1461, 4)
+    + rcdDiv(153 * rcdMod(gm + 9, 12) + 2, 5) + gd - 34840408;
+  d = d - rcdDiv(rcdDiv(gy + 100100 + rcdDiv(gm - 8, 6), 100) * 3, 4) + 752;
+  return d;
+}
+function rcdD2g(jdn){
+  let j = 4 * jdn + 139361631;
+  j = j + rcdDiv(rcdDiv(4 * jdn + 183187720, 146097) * 3, 4) * 4 - 3908;
+  const i = rcdDiv(rcdMod(j, 1461), 4) * 5 + 308;
+  const gd = rcdDiv(rcdMod(i, 153), 5) + 1;
+  const gm = rcdMod(rcdDiv(i, 153), 12) + 1;
+  const gy = rcdDiv(j, 1461) - 100100 + rcdDiv(8 - gm, 6);
+  return [gy, gm, gd];
+}
+function rcdJ2d(jy, jm, jd){
+  const { gy, march } = rcdJalCal(jy);
+  return rcdG2d(gy, 3, march) + (jm - 1) * 31 - rcdDiv(jm, 7) * (jm - 7) + jd - 1;
+}
+function rcdD2j(jdn){
+  const gy0 = rcdD2g(jdn)[0];
+  let jy = gy0 - 621;
+  const { gy: gy2, march } = rcdJalCal(jy);
+  const jdn1f = rcdG2d(gy2, 3, march);
+  let k = jdn - jdn1f, jm, jd;
+  if (k >= 0) {
+    if (k <= 185) { jm = 1 + rcdDiv(k, 31); jd = rcdMod(k, 31) + 1; return [jy, jm, jd]; }
+    k -= 186;
+  } else {
+    jy -= 1; k += 179;
+    if (rcdJalCal(jy).leap === 1) k += 1;
+  }
+  jm = 7 + rcdDiv(k, 30); jd = rcdMod(k, 30) + 1;
+  return [jy, jm, jd];
+}
+function rcdIsLeapJalali(jy){ return rcdJalCal(jy).leap === 1; }
+function rcdJalaliMonthLen(jy, jm){ if (jm <= 6) return 31; if (jm <= 11) return 30; return rcdIsLeapJalali(jy) ? 30 : 29; }
+function rcdIsLeapGregorian(gy){ return (gy % 4 === 0 && gy % 100 !== 0) || (gy % 400 === 0); }
+function rcdGregorianMonthLen(gy, gm){ return [31, rcdIsLeapGregorian(gy) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][gm - 1]; }
+// تاریخ واقعی (Date) <-> [سال,ماه,روز] شمسی
+function rcdDateToJalali(date){ return rcdD2j(rcdG2d(date.getFullYear(), date.getMonth() + 1, date.getDate())); }
+function rcdJalaliToDate(jy, jm, jd){ const [gy, gm, gd] = rcdD2g(rcdJ2d(jy, jm, jd)); return new Date(gy, gm - 1, gd); }
+
+const RCD_JALALI_MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+const RCD_GREGORIAN_MONTHS_FA = ['ژانویه','فوریه','مارس','آوریل','مه','ژوئن','ژوئیه','اوت','سپتامبر','اکتبر','نوامبر','دسامبر'];
+const RCD_WEEKDAYS_FA = ['ش','ی','د','س','چ','پ','ج']; // شروع هفته از شنبه
+// جایگاه روز هفته را طوری برمی‌گردونه که شنبه=۰ باشه (هماهنگ با تقویم ایرانی)
+function rcdWeekdayIndex(date){ return (date.getDay() + 1) % 7; }
+
+function rcdFormatDate(date){
+  if (calSystem === 'jalali') {
+    const [jy, jm, jd] = rcdDateToJalali(date);
+    return `${toFa(jd)} ${RCD_JALALI_MONTHS[jm - 1]} ${toFa(jy)}`;
+  }
+  const gy = date.getFullYear(), gm = date.getMonth() + 1, gd = date.getDate();
+  return `${gd} ${RCD_GREGORIAN_MONTHS_FA[gm - 1]} ${gy}`;
+}
+
+// ---------- state ----------
+let calSystem = 'jalali';       // jalali | gregorian
+let rcdTarget = 'from';         // from | to
+let rcdViewAnchor = new Date(); // یک روز دلخواه در ماهی که همین الان نمایش داده می‌شه
+
+function setCalSystem(sys, btn){
+  calSystem = sys;
+  document.querySelectorAll('#rcdCalToggle .rcd-cal-btn').forEach(el => el.classList.remove('active'));
+  btn.classList.add('active');
+  refreshDateFieldLabels();
+  if (document.getElementById('rcdPopover').style.display !== 'none') rcdRenderCalendar();
+}
+function refreshDateFieldLabels(){
+  const fromVal = document.getElementById('rcdFromVal');
+  const toVal = document.getElementById('rcdToVal');
+  if (customStartDate) { fromVal.textContent = rcdFormatDate(customStartDate); fromVal.classList.remove('placeholder'); }
+  else { fromVal.textContent = 'انتخاب کنید'; fromVal.classList.add('placeholder'); }
+  if (customEndDate) { toVal.textContent = rcdFormatDate(customEndDate); toVal.classList.remove('placeholder'); }
+  else { toVal.textContent = 'انتخاب کنید'; toVal.classList.add('placeholder'); }
+}
+function toggleDatePopover(target){
+  const pop = document.getElementById('rcdPopover');
+  const isOpenForSameTarget = pop.style.display !== 'none' && rcdTarget === target;
+  rcdTarget = target;
+  document.getElementById('rcdFromBtn').classList.toggle('rcd-open', target === 'from');
+  document.getElementById('rcdToBtn').classList.toggle('rcd-open', target === 'to');
+  if (isOpenForSameTarget) { pop.style.display = 'none'; return; }
+  rcdViewAnchor = (target === 'from' ? customStartDate : customEndDate) || rcdViewAnchor || new Date();
+  pop.style.display = 'block';
+  document.getElementById('rcdPopTarget').textContent = target === 'from' ? 'در حال انتخاب: از تاریخ' : 'در حال انتخاب: تا تاریخ';
+  rcdRenderCalendar();
+}
+function rcdChangeMonth(delta){
+  if (calSystem === 'jalali') {
+    let [jy, jm] = rcdDateToJalali(rcdViewAnchor);
+    jm += delta;
+    if (jm > 12) { jm = 1; jy++; } else if (jm < 1) { jm = 12; jy--; }
+    rcdViewAnchor = rcdJalaliToDate(jy, jm, 1);
+  } else {
+    const d = new Date(rcdViewAnchor);
+    d.setDate(1);
+    d.setMonth(d.getMonth() + delta);
+    rcdViewAnchor = d;
+  }
+  rcdRenderCalendar();
+}
+function rcdSameDay(a, b){ return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+function rcdRenderCalendar(){
+  document.getElementById('rcdWeekdays').innerHTML = RCD_WEEKDAYS_FA.map(w => `<span>${w}</span>`).join('');
+  const today = new Date();
+  let cells = [];
+  let titleText = '';
+  if (calSystem === 'jalali') {
+    const [jy, jm] = rcdDateToJalali(rcdViewAnchor);
+    titleText = `${RCD_JALALI_MONTHS[jm - 1]} ${toFa(jy)}`;
+    const firstOfMonth = rcdJalaliToDate(jy, jm, 1);
+    const lead = rcdWeekdayIndex(firstOfMonth);
+    const len = rcdJalaliMonthLen(jy, jm);
+    for (let i = 0; i < lead; i++) cells.push(null);
+    for (let d = 1; d <= len; d++) cells.push({ date: rcdJalaliToDate(jy, jm, d), label: toFa(d) });
+  } else {
+    const gy = rcdViewAnchor.getFullYear(), gm = rcdViewAnchor.getMonth() + 1;
+    titleText = `${RCD_GREGORIAN_MONTHS_FA[gm - 1]} ${gy}`;
+    const firstOfMonth = new Date(gy, gm - 1, 1);
+    const lead = rcdWeekdayIndex(firstOfMonth);
+    const len = rcdGregorianMonthLen(gy, gm);
+    for (let i = 0; i < lead; i++) cells.push(null);
+    for (let d = 1; d <= len; d++) cells.push({ date: new Date(gy, gm - 1, d), label: String(d) });
+  }
+  document.getElementById('rcdPopTitle').textContent = titleText;
+  document.getElementById('rcdDays').innerHTML = cells.map(c => {
+    if (!c) return '<span class="rcd-day rcd-empty">·</span>';
+    let cls = 'rcd-day';
+    if (rcdSameDay(c.date, today)) cls += ' rcd-today';
+    if (rcdSameDay(c.date, customStartDate) || rcdSameDay(c.date, customEndDate)) cls += ' rcd-selected';
+    else if (customStartDate && customEndDate && c.date > customStartDate && c.date < customEndDate) cls += ' rcd-in-range';
+    return `<button type="button" class="${cls}" onclick="rcdPickDay('${c.date.toISOString()}')">${c.label}</button>`;
+  }).join('');
+}
+function rcdPickDay(iso){
+  const picked = new Date(iso);
+  picked.setHours(0, 0, 0, 0);
+  if (rcdTarget === 'from') {
+    customStartDate = picked;
+    if (customEndDate && customEndDate < customStartDate) customEndDate = null;
+  } else {
+    customEndDate = picked;
+    if (customStartDate && customEndDate < customStartDate) { customStartDate = customEndDate; customEndDate = picked; }
+  }
+  refreshDateFieldLabels();
+  if (rcdTarget === 'from' && !customEndDate) {
+    rcdTarget = 'to';
+    document.getElementById('rcdFromBtn').classList.remove('rcd-open');
+    document.getElementById('rcdToBtn').classList.add('rcd-open');
+    document.getElementById('rcdPopTarget').textContent = 'در حال انتخاب: تا تاریخ';
+    rcdRenderCalendar();
+  } else {
+    document.getElementById('rcdPopover').style.display = 'none';
+    document.getElementById('rcdFromBtn').classList.remove('rcd-open');
+    document.getElementById('rcdToBtn').classList.remove('rcd-open');
+  }
 }
 
 // گزینه‌های مبدا/مقصد/ایرلاین رو هر بار که شیت باز می‌شه از روی خودِ
@@ -3254,9 +3583,24 @@ function reportRangeStart(range){
   if (range === 'today') { const d = new Date(now); d.setHours(0, 0, 0, 0); return d; }
   if (range === '7d') return new Date(now.getTime() - 7 * 86400000);
   if (range === '30d') return new Date(now.getTime() - 30 * 86400000);
+  if (range === 'custom') return customStartDate ? new Date(customStartDate) : null;
   return null; // کل بازه دادگان موجود
 }
+// انتهای بازه — فقط برای «بازه دلخواه» با «امروز» فرق می‌کنه (بقیه بازه‌ها
+// همیشه تا همین لحظه ادامه دارن).
+function reportRangeEnd(range){
+  if (range === 'custom' && customEndDate) {
+    const d = new Date(customEndDate);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }
+  return new Date();
+}
 function reportRangeLabel(range){
+  if (range === 'custom') {
+    if (!customStartDate || !customEndDate) return 'بازه دلخواه (نامشخص)';
+    return `${rcdFormatDate(customStartDate)} تا ${rcdFormatDate(customEndDate)}`;
+  }
   return { today: 'امروز', '7d': '۷ روز اخیر', '30d': '۳۰ روز اخیر', all: 'کل بازه دادگان موجود' }[range] || '—';
 }
 function reportRouteLabel(origin, dest){
@@ -3272,14 +3616,14 @@ function reportRouteLabel(origin, dest){
 // صفحه هم رعایت می‌کنه: پروازِ هنوز پروازنکرده رو «به‌موقع» فرض نکن.
 function reportCompletedFlights({ origin = '', dest = '', airline = '' } = {}){
   const start = reportRangeStart(reportRange);
-  const now = new Date();
+  const end = reportRangeEnd(reportRange);
   return allFlights.filter(f => {
     if (!(f.status === 'landed' || f.status === 'cancelled')) return false;
     if (!f.dep_scheduled) return false;
     const d = new Date(f.dep_scheduled);
     if (isNaN(d)) return false;
     if (start && d < start) return false;
-    if (d > now) return false;
+    if (d > end) return false;
     if (origin && f.dep_iata !== origin) return false;
     if (dest && f.arr_iata !== dest) return false;
     if (airline && f.airline !== airline) return false;
@@ -3473,7 +3817,16 @@ function buildDocChart(canvasId, kind, labels, values, axisLabel){
   });
 }
 
-function generateReportPreview(){
+function showReportHint(msg){
+  const previewArea = document.getElementById('repPreviewArea');
+  const wrap = document.getElementById('repPreviewWrap');
+  const dlBtn = document.getElementById('repDownloadBtn');
+  previewArea.innerHTML = `<div class="empty-hint">${msg}</div>`;
+  wrap.style.display = 'block'; dlBtn.style.display = 'none';
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function generateReportPreview(){
   const origin = document.getElementById('repOrigin').value;
   const dest = document.getElementById('repDest').value;
   const airlineSel = document.getElementById('repAirline');
@@ -3483,19 +3836,20 @@ function generateReportPreview(){
   const previewArea = document.getElementById('repPreviewArea');
   const wrap = document.getElementById('repPreviewWrap');
   const dlBtn = document.getElementById('repDownloadBtn');
+  const genBtn = document.getElementById('repGenerateBtn');
 
   if (reportType === 'airline' && !airline) {
-    previewArea.innerHTML = '<div class="empty-hint">برای این نوع گزارش، ابتدا یک ایرلاین از فهرست بالا انتخاب کنید.</div>';
-    wrap.style.display = 'block'; dlBtn.style.display = 'none';
-    wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    showReportHint('برای این نوع گزارش، ابتدا یک ایرلاین از فهرست بالا انتخاب کنید.');
+    return;
+  }
+  if (reportRange === 'custom' && (!customStartDate || !customEndDate)) {
+    showReportHint('برای «بازه دلخواه»، ابتدا هر دو تاریخ «از» و «تا» را از تقویم انتخاب کنید.');
     return;
   }
 
   const flights = reportCompletedFlights({ origin, dest, airline });
   if (!flights.length) {
-    previewArea.innerHTML = '<div class="empty-hint">با این فیلترها هیچ پرواز نهایی‌شده‌ای در دادگان یافت نشد. بازه یا فیلتر دیگری را امتحان کنید.</div>';
-    wrap.style.display = 'block'; dlBtn.style.display = 'none';
-    wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    showReportHint('با این فیلترها هیچ پرواز نهایی‌شده‌ای در دادگان یافت نشد. بازه یا فیلتر دیگری را امتحان کنید.');
     return;
   }
 
@@ -3643,11 +3997,54 @@ function generateReportPreview(){
     ${buildDocDisclaimer(flights.length)}
     ${buildDocFoot(flights.length)}`;
 
-  previewArea.innerHTML = wrapDoc(headHtml, bodyInner);
-  wrap.style.display = 'block';
-  dlBtn.style.display = 'flex';
+  // سند رو توی کانتینر مخفیِ خارج از صفحه می‌سازیم — کاربر مستقیم این
+  // HTML رو نمی‌بینه، فقط PDF واقعی که ازش تولید می‌شه رو می‌بینه.
+  const buildArea = document.getElementById('repDocBuildArea');
+  buildArea.innerHTML = wrapDoc(headHtml, bodyInner);
   if (chartLabels.length) buildDocChart('repChartCanvas', chartKind, chartLabels, chartValues, chartAxis);
+
+  wrap.style.display = 'block';
+  dlBtn.style.display = 'none';
+  previewArea.innerHTML = `
+    <div class="rep-loading-box">
+      <div class="rep-loading-spin"></div>
+      <span>در حال ساخت PDF نهایی برای پیش‌نمایش…</span>
+    </div>`;
   wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  genBtn.classList.add('loading'); genBtn.disabled = true;
+
+  try {
+    const node = document.getElementById('repDocNode');
+    const { blob } = await buildReportPdfBlob(node);
+    if (currentReportPdfUrl) URL.revokeObjectURL(currentReportPdfUrl);
+    currentReportPdfBlob = blob;
+    currentReportPdfFilename = pdfFilename();
+    currentReportPdfUrl = URL.createObjectURL(blob);
+
+    previewArea.innerHTML = `
+      <div class="rep-pdf-box">
+        <div class="rpp-head">
+          <div class="rpp-head-info">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>
+            <span class="rpp-head-title">${escapeHtml(currentReportPdfFilename)}</span>
+          </div>
+          <button type="button" class="rpp-newtab" onclick="window.open(currentReportPdfUrl, '_blank')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 4h6v6M20 4 10 14M8 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-3"/></svg>
+            تب جدید
+          </button>
+        </div>
+        <div class="rpp-frame-wrap">
+          <iframe src="${currentReportPdfUrl}#toolbar=0&navpanes=0" title="پیش‌نمایش PDF گزارش"></iframe>
+        </div>
+      </div>`;
+    dlBtn.style.display = 'flex';
+  } catch (err) {
+    console.error('خطا در ساخت PDF گزارش:', err);
+    showReportHint('ساخت پیش‌نمایش PDF با خطا مواجه شد. لطفاً دوباره تلاش کنید.');
+  } finally {
+    genBtn.classList.remove('loading'); genBtn.disabled = false;
+  }
 }
 
 /* ---------- خروجی PDF ----------
@@ -3699,75 +4096,107 @@ function computeSliceBoundaries(canvasHeight, pageHeightPx, unsplitRegions){
   }
   return boundaries;
 }
+
+// PDF فعلیِ ساخته‌شده — همون فایلی که هم توی جعبه پیش‌نمایش (iframe) نشون
+// داده می‌شه و هم با دکمه دانلود ذخیره می‌شه؛ دیگه لازم نیست موقع دانلود
+// دوباره از صفر ساخته بشه.
+let currentReportPdfBlob = null;
+let currentReportPdfUrl = null;
+let currentReportPdfFilename = '';
+
+// کل منطق ساخت PDF از روی سندِ رندرشده (عکس‌برداری + برش صفحه‌بندی A4 +
+// پاورقی) — خروجی یک Blob واقعیه، نه ذخیره مستقیم، تا هم برای پیش‌نمایش
+// و هم برای دانلود قابل استفاده باشه.
+async function buildReportPdfBlob(node){
+  if (!node) throw new Error('سند گزارش یافت نشد.');
+  await ensureReportLibs();
+  if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+
+  // موقعیت بلوک‌های «غیرقابل‌برش» رو نسبت به بالای سند، در مختصات CSS
+  // اندازه می‌گیریم — قبل از عکس‌برداری، چون بعدش مقیاسش می‌بریم روی
+  // پیکسل‌های کنواس.
+  const nodeRect = node.getBoundingClientRect();
+  const unsplitSelectors = 'tr, .rep-doc-stats, .rep-doc-chart, .rep-doc-head, .rep-doc-disclaimer';
+  const cssRegions = [...node.querySelectorAll(unsplitSelectors)].map(el => {
+    const r = el.getBoundingClientRect();
+    return { top: r.top - nodeRect.top, bottom: r.bottom - nodeRect.top };
+  });
+
+  const canvas = await html2canvas(node, { scale: 2, backgroundColor: '#FFFFFF', useCORS: true });
+  const canvasScale = canvas.width / node.offsetWidth;
+  const unsplitRegions = cssRegions.map(r => ({ top: r.top * canvasScale, bottom: r.bottom * canvasScale }));
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidthMM = pdf.internal.pageSize.getWidth();
+  const pageHeightMM = pdf.internal.pageSize.getHeight();
+  const footerMM = 9; // فضای پاورقی شماره صفحه، خارج از تصویر سند
+  const pxPerMM = canvas.width / pageWidthMM;
+  const pageHeightPx = (pageHeightMM - footerMM) * pxPerMM;
+
+  const boundaries = computeSliceBoundaries(canvas.height, pageHeightPx, unsplitRegions);
+  const totalPages = boundaries.length;
+
+  boundaries.forEach(([top, bottom], i) => {
+    const sliceHeightPx = bottom - top;
+    const sliceCanvas = document.createElement('canvas');
+    sliceCanvas.width = canvas.width;
+    sliceCanvas.height = sliceHeightPx;
+    const sctx = sliceCanvas.getContext('2d');
+    sctx.fillStyle = '#FFFFFF';
+    sctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+    sctx.drawImage(canvas, 0, top, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+    const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+    const sliceHeightMM = sliceHeightPx / pxPerMM;
+
+    if (i > 0) pdf.addPage();
+    pdf.addImage(sliceData, 'JPEG', 0, 0, pageWidthMM, sliceHeightMM);
+
+    // پاورقی رسمی: خط جداکننده + شماره صفحه (فقط لاتین/عدد، چون جی‌اس‌پی‌دی‌اف
+    // متن فارسی رو بدون شکل‌دهی حروف درست رندر نمی‌کنه)
+    pdf.setDrawColor(207, 201, 184);
+    pdf.setLineWidth(0.2);
+    pdf.line(10, pageHeightMM - footerMM + 2, pageWidthMM - 10, pageHeightMM - footerMM + 2);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor(120, 115, 100);
+    pdf.text('bi-parde.ir - flight delay intelligence report', 10, pageHeightMM - 4);
+    pdf.text(`Page ${i + 1} / ${totalPages}`, pageWidthMM - 10, pageHeightMM - 4, { align: 'right' });
+  });
+
+  const filename = pdfFilename();
+  pdf.setProperties({ title: filename, creator: 'bi-parde.ir' });
+  const blob = pdf.output('blob');
+  return { blob, pdf, totalPages };
+}
+
+// دکمه دانلود دیگه چیزی رو از نو نمی‌سازه — همون PDF-ای که برای
+// پیش‌نمایش ساخته شده رو مستقیماً ذخیره می‌کنه (سریع و بدون تاخیر اضافه).
 async function downloadReportPDF(){
-  const node = document.getElementById('repDocNode');
-  if (!node) return;
   const btn = document.getElementById('repDownloadBtn');
   const label = document.getElementById('repDownloadLabel');
-  btn.classList.add('loading'); btn.disabled = true;
   const prevLabel = label.textContent;
-  label.textContent = 'در حال ساخت PDF…';
   try {
-    await ensureReportLibs();
-    if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
-
-    // موقعیت بلوک‌های «غیرقابل‌برش» رو نسبت به بالای سند، در مختصات CSS
-    // اندازه می‌گیریم — قبل از عکس‌برداری، چون بعدش مقیاسش می‌بریم روی
-    // پیکسل‌های کنواس.
-    const nodeRect = node.getBoundingClientRect();
-    const unsplitSelectors = 'tr, .rep-doc-stats, .rep-doc-chart, .rep-doc-head, .rep-doc-disclaimer';
-    const cssRegions = [...node.querySelectorAll(unsplitSelectors)].map(el => {
-      const r = el.getBoundingClientRect();
-      return { top: r.top - nodeRect.top, bottom: r.bottom - nodeRect.top };
-    });
-
-    const canvas = await html2canvas(node, { scale: 2, backgroundColor: '#FFFFFF', useCORS: true });
-    const canvasScale = canvas.width / node.offsetWidth;
-    const unsplitRegions = cssRegions.map(r => ({ top: r.top * canvasScale, bottom: r.bottom * canvasScale }));
-
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidthMM = pdf.internal.pageSize.getWidth();
-    const pageHeightMM = pdf.internal.pageSize.getHeight();
-    const footerMM = 9; // فضای پاورقی شماره صفحه، خارج از تصویر سند
-    const pxPerMM = canvas.width / pageWidthMM;
-    const pageHeightPx = (pageHeightMM - footerMM) * pxPerMM;
-
-    const boundaries = computeSliceBoundaries(canvas.height, pageHeightPx, unsplitRegions);
-    const totalPages = boundaries.length;
-
-    boundaries.forEach(([top, bottom], i) => {
-      const sliceHeightPx = bottom - top;
-      const sliceCanvas = document.createElement('canvas');
-      sliceCanvas.width = canvas.width;
-      sliceCanvas.height = sliceHeightPx;
-      const sctx = sliceCanvas.getContext('2d');
-      sctx.fillStyle = '#FFFFFF';
-      sctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-      sctx.drawImage(canvas, 0, top, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
-      const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.95);
-      const sliceHeightMM = sliceHeightPx / pxPerMM;
-
-      if (i > 0) pdf.addPage();
-      pdf.addImage(sliceData, 'JPEG', 0, 0, pageWidthMM, sliceHeightMM);
-
-      // پاورقی رسمی: خط جداکننده + شماره صفحه (فقط لاتین/عدد، چون جی‌اس‌پی‌دی‌اف
-      // متن فارسی رو بدون شکل‌دهی حروف درست رندر نمی‌کنه)
-      pdf.setDrawColor(207, 201, 184);
-      pdf.setLineWidth(0.2);
-      pdf.line(10, pageHeightMM - footerMM + 2, pageWidthMM - 10, pageHeightMM - footerMM + 2);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(8);
-      pdf.setTextColor(120, 115, 100);
-      pdf.text('bi-parde.ir - flight delay intelligence report', 10, pageHeightMM - 4);
-      pdf.text(`Page ${i + 1} / ${totalPages}`, pageWidthMM - 10, pageHeightMM - 4, { align: 'right' });
-    });
-
-    pdf.setProperties({ title: pdfFilename(), creator: 'bi-parde.ir' });
-    pdf.save(pdfFilename());
+    if (!currentReportPdfBlob) {
+      // مورد نادر: کاربر قبل از آماده‌شدن پیش‌نمایش دکمه رو زده — دوباره بساز.
+      btn.classList.add('loading'); btn.disabled = true;
+      label.textContent = 'در حال ساخت PDF…';
+      const node = document.getElementById('repDocNode');
+      const { blob } = await buildReportPdfBlob(node);
+      currentReportPdfBlob = blob;
+      currentReportPdfFilename = pdfFilename();
+      if (currentReportPdfUrl) URL.revokeObjectURL(currentReportPdfUrl);
+      currentReportPdfUrl = URL.createObjectURL(blob);
+    }
+    const a = document.createElement('a');
+    a.href = currentReportPdfUrl;
+    a.download = currentReportPdfFilename || pdfFilename();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   } catch (err) {
-    console.error('خطا در ساخت PDF گزارش:', err);
-    alert('ساخت فایل PDF با خطا مواجه شد. لطفاً دوباره تلاش کنید.');
+    console.error('خطا در دانلود PDF گزارش:', err);
+    alert('دانلود فایل PDF با خطا مواجه شد. لطفاً دوباره تلاش کنید.');
   } finally {
     btn.classList.remove('loading'); btn.disabled = false;
     label.textContent = prevLabel;
