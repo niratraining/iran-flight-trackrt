@@ -1037,6 +1037,158 @@
     .rail-strip{ grid-template-columns:repeat(auto-fill, minmax(235px, 1fr)); }
     .timing-grid{ grid-template-columns:1.4fr 1fr; }
   }
+
+  /* ---------- PROFESSIONAL REPORT — CTA CARD ----------
+     ابزار گزارش‌گیری حرفه‌ای برای ایرلاین‌ها/چارترکنندگان. عمداً تیره و
+     مینیمال (برخلاف بقیه صفحه که کرم/زردِ روشنه) تا حس یک ابزار سازمانی
+     و جدی رو منتقل کنه، جدا از لحن عمومیِ سایت. */
+  .pro-report-cta{
+    position:relative; max-width:900px; margin:22px auto 0; padding:30px 26px 26px;
+    background:
+      radial-gradient(560px 220px at 85% -10%, rgba(255,198,39,0.16), transparent 60%),
+      repeating-linear-gradient(90deg, rgba(255,253,248,0.035) 0 1px, transparent 1px 34px),
+      var(--ink);
+    border:1.5px solid var(--ink); border-radius:22px; color:var(--white); overflow:hidden;
+    box-shadow:var(--shadow-lift);
+  }
+  .pro-report-badge{
+    display:inline-flex; align-items:center; gap:7px; font-family:'JetBrains Mono', monospace;
+    font-size:10.5px; font-weight:700; letter-spacing:.04em; color:var(--yellow);
+    border:1px solid rgba(255,198,39,0.32); background:rgba(255,198,39,0.08);
+    padding:6px 12px 6px 10px; border-radius:999px; margin-bottom:18px;
+  }
+  .pro-report-badge::before{ content:''; width:6px; height:6px; border-radius:50%; background:var(--yellow); box-shadow:0 0 0 3px rgba(255,198,39,0.18); }
+  .pro-report-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:18px; }
+  .pro-report-title{ font-size:20px; font-weight:800; margin:0 0 9px; color:var(--white); line-height:1.4; }
+  .pro-report-sub{ font-size:13px; line-height:1.9; color:rgba(255,253,248,0.62); margin:0; max-width:48ch; font-weight:500; }
+  .pro-report-icon{
+    flex-shrink:0; width:52px; height:52px; border-radius:15px; background:rgba(255,253,248,0.06);
+    border:1.5px solid rgba(255,253,248,0.14); display:flex; align-items:center; justify-content:center;
+  }
+  .pro-report-icon svg{ width:24px; height:24px; color:var(--yellow); }
+  .pro-report-features{ display:flex; flex-wrap:wrap; gap:8px; margin:20px 0 22px; }
+  .pro-report-feature{
+    font-size:11px; font-weight:700; color:rgba(255,253,248,0.8);
+    border:1px solid rgba(255,253,248,0.16); border-radius:9px; padding:7px 11px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .pro-report-feature svg{ width:12px; height:12px; color:var(--yellow); flex-shrink:0; }
+  .pro-report-btn{
+    all:unset; box-sizing:border-box; display:flex; align-items:center; justify-content:center; gap:9px;
+    width:100%; background:var(--yellow); color:var(--ink); font-weight:800; font-size:14.5px;
+    padding:16px; border-radius:14px; cursor:pointer; transition:transform .15s ease;
+    box-shadow:0 10px 26px rgba(255,198,39,0.22);
+  }
+  .pro-report-btn:active{ transform:scale(0.97); }
+  .pro-report-btn svg{ width:16px; height:16px; }
+
+  @media (max-width:640px){
+    .pro-report-cta{ padding:26px 20px 22px; border-radius:20px; }
+    .pro-report-head{ flex-direction:column-reverse; }
+    .pro-report-title{ font-size:18px; }
+  }
+
+  /* ---------- PROFESSIONAL REPORT — BUILDER SHEET ---------- */
+  .rep-head{ display:flex; align-items:flex-start; gap:13px; padding:8px 22px 16px; border-bottom:1px solid var(--line); }
+  .rep-head-icon{ width:40px; height:40px; border-radius:12px; background:var(--ink); color:var(--yellow); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .rep-head-icon svg{ width:19px; height:19px; }
+  .rep-head-title{ font-weight:800; font-size:16px; }
+  .rep-head-sub{ font-size:11.5px; color:var(--ink-faint); margin-top:3px; font-weight:600; }
+
+  .rep-body{ padding:18px 22px 8px; }
+  .rep-section{ margin-bottom:20px; }
+  .rep-section-lbl{ font-size:11.5px; font-weight:800; color:var(--ink-faint); margin-bottom:9px; }
+
+  .rep-types{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .rep-type-card{
+    all:unset; box-sizing:border-box; cursor:pointer; display:flex; flex-direction:column; gap:5px;
+    padding:13px 13px; border:1.5px solid var(--line); border-radius:13px; background:var(--white);
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .rep-type-card svg{ width:16px; height:16px; color:var(--ink-faint); }
+  .rep-type-card b{ font-size:12.5px; font-weight:800; color:var(--ink); }
+  .rep-type-card span{ font-size:10.5px; color:var(--ink-faint); font-weight:600; line-height:1.5; }
+  .rep-type-card.active{ border-color:var(--line-strong); background:var(--yellow-pale); }
+  .rep-type-card.active svg{ color:var(--ink); }
+
+  .rep-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .rep-chip{
+    all:unset; box-sizing:border-box; cursor:pointer; font-size:12.5px; font-weight:700; color:var(--ink-soft);
+    padding:9px 15px; border-radius:10px; border:1.5px solid var(--line); background:var(--white);
+    transition:border-color .15s ease, background .15s ease, color .15s ease;
+  }
+  .rep-chip.active{ border-color:var(--line-strong); background:var(--ink); color:var(--white); }
+
+  .rep-row{ display:flex; gap:10px; }
+  .rep-row > *{ flex:1; min-width:0; }
+  .rep-select, .rep-input{
+    width:100%; box-sizing:border-box; font-family:'Vazirmatn', sans-serif; font-size:13px; font-weight:600; color:var(--ink);
+    background:var(--white); border:1.5px solid var(--line); border-radius:11px; padding:12px 13px;
+  }
+  .rep-select:focus, .rep-input:focus{ outline:none; border-color:var(--line-strong); }
+  .rep-field-lbl{ font-size:11.5px; font-weight:700; color:var(--ink-faint); margin-bottom:7px; display:block; }
+
+  .rep-generate-btn{
+    all:unset; box-sizing:border-box; width:100%; display:flex; align-items:center; justify-content:center; gap:9px;
+    background:var(--ink); color:var(--white); font-weight:800; font-size:14.5px; padding:16px; border-radius:13px;
+    cursor:pointer; margin-top:4px;
+  }
+  .rep-generate-btn svg{ width:16px; height:16px; color:var(--yellow); }
+  .rep-generate-btn.loading svg, .rep-download-btn.loading svg{ animation:rep-spin .9s linear infinite; }
+  @keyframes rep-spin{ to{ transform:rotate(360deg); } }
+
+  .rep-preview-wrap{ margin-top:22px; border-top:2px dashed var(--line); padding-top:20px; }
+  .rep-preview-lbl{ display:flex; align-items:center; gap:8px; font-size:12px; font-weight:800; color:var(--ink-faint); margin-bottom:12px; }
+  .rep-preview-lbl svg{ width:14px; height:14px; color:var(--green); flex-shrink:0; }
+
+  .rep-doc{
+    background:var(--white); border:1.5px solid var(--line); border-radius:16px; overflow:hidden;
+    box-shadow:var(--shadow); font-family:'Vazirmatn', sans-serif;
+  }
+  .rep-doc-head{ background:var(--ink); color:var(--white); padding:22px 22px 20px; position:relative; overflow:hidden; }
+  .rep-doc-head::before{ content:''; position:absolute; inset:0; background:repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 34px); }
+  .rep-doc-brand{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; position:relative; }
+  .rep-doc-brand b{ font-size:15px; font-weight:800; }
+  .rep-doc-brand span{ font-family:'JetBrains Mono', monospace; font-size:9.5px; color:rgba(255,253,248,0.5); letter-spacing:.02em; }
+  .rep-doc-title{ font-size:17.5px; font-weight:800; margin-bottom:8px; position:relative; }
+  .rep-doc-meta{ font-size:11px; color:rgba(255,253,248,0.6); font-weight:600; position:relative; display:flex; flex-wrap:wrap; gap:4px 14px; }
+
+  .rep-doc-body{ padding:20px 20px 22px; }
+  .rep-doc-forwhom{ font-size:12.5px; font-weight:700; color:var(--ink-soft); margin-bottom:16px; padding:11px 14px; background:var(--cream); border-radius:10px; border:1px solid var(--line); }
+  .rep-doc-forwhom b{ color:var(--ink); }
+
+  .rep-doc-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:20px; }
+  .rep-doc-stat{ text-align:center; padding:12px 4px; background:var(--cream); border-radius:12px; border:1px solid var(--line); }
+  .rep-doc-stat b{ display:block; font-size:16px; font-weight:800; }
+  .rep-doc-stat span{ font-size:9px; font-weight:700; color:var(--ink-faint); }
+
+  .rep-subtitle{ font-size:12.5px; font-weight:800; color:var(--ink); margin:18px 0 10px; }
+
+  .rep-table{ width:100%; border-collapse:collapse; font-size:11.5px; }
+  .rep-table th{ background:var(--ink); color:var(--white); font-weight:700; padding:9px 7px; text-align:right; font-size:10px; }
+  .rep-table th:first-child{ border-radius:8px 0 0 0; }
+  .rep-table th:last-child{ border-radius:0 8px 0 0; }
+  .rep-table td{ padding:8px 7px; border-bottom:1px solid var(--line); font-weight:600; color:var(--ink); }
+  .rep-table tr:nth-child(even) td{ background:var(--cream); }
+  .rep-table .mono{ font-family:'JetBrains Mono', monospace; direction:ltr; unicode-bidi:isolate; }
+  .rep-bar-cell{ display:flex; align-items:center; gap:8px; }
+  .rep-bar-track{ flex:1; height:6px; border-radius:4px; background:var(--line); overflow:hidden; min-width:34px; }
+  .rep-bar-fill{ height:100%; border-radius:4px; background:var(--ink); }
+  .rep-doc-foot{ margin-top:18px; padding-top:14px; border-top:1px dashed var(--line); font-size:9.5px; color:var(--ink-faint); font-weight:600; line-height:1.8; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+
+  .rep-download-btn{
+    all:unset; box-sizing:border-box; width:100%; display:flex; align-items:center; justify-content:center; gap:9px;
+    background:var(--yellow); color:var(--ink); font-weight:800; font-size:14.5px; padding:16px; border-radius:13px;
+    cursor:pointer; margin-top:16px; box-shadow:0 10px 26px rgba(255,198,39,0.22);
+  }
+  .rep-download-btn svg{ width:16px; height:16px; }
+  .rep-download-btn:disabled, .rep-generate-btn:disabled{ opacity:.55; cursor:default; }
+
+  @media (max-width:420px){
+    .rep-types{ grid-template-columns:1fr 1fr; }
+    .rep-doc-stats{ grid-template-columns:repeat(2,1fr); }
+    .rep-doc-stat:nth-child(n+3){ margin-top:0; }
+  }
 </style>
 </head>
 <body>
@@ -1152,6 +1304,29 @@
 
   <div class="story-block">
     <p><b>این یک پروژه تحقیقاتی مستقل است</b> — نه پلتفرم فروش بلیط، نه شریک تجاری هیچ ایرلاینی. فقط عدد، بدون رودربایستی.</p>
+  </div>
+
+  <div class="pro-report-cta">
+    <div class="pro-report-badge">ابزار حرفه‌ای</div>
+    <div class="pro-report-head">
+      <div>
+        <h3 class="pro-report-title">گزارش‌گیری حرفه‌ای برای ایرلاین‌ها و چارترکنندگان</h3>
+        <p class="pro-report-sub">کارنامه ایرلاین‌ها، پرتاخیرترین پروازها، روند روزانه یا گزارش اختصاصی یک ایرلاین — بر اساس دادگان زنده، آماده خروجی PDF.</p>
+      </div>
+      <div class="pro-report-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3.5h7l5 5V19a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M14 3.5V8a1 1 0 0 0 1 1h4.5"/><path d="M8.5 13h7M8.5 16.2h7M8.5 9.8h3"/></svg>
+      </div>
+    </div>
+    <div class="pro-report-features">
+      <span class="pro-report-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>بازه دلخواه (امروز / هفته / ماه)</span>
+      <span class="pro-report-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>فیلتر مسیر و ایرلاین</span>
+      <span class="pro-report-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>پیش‌نمایش قبل از دانلود</span>
+      <span class="pro-report-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>خروجی PDF آماده ارائه</span>
+    </div>
+    <button type="button" class="pro-report-btn" onclick="openReportSheet()">
+      ساخت گزارش حرفه‌ای
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" transform="rotate(180 12 12)"/></svg>
+    </button>
   </div>
 </div>
 
@@ -1339,6 +1514,117 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
   </button>
   <div id="bottomSheetBody"></div>
+</div>
+
+<!-- پنل گزارش‌گیری حرفه‌ای — همون الگوی bottom-sheet بالا، فقط برای فرم
+     ساخت گزارش و پیش‌نمایش/دانلود PDF. عمداً یک شیت جدا از bottomSheet
+     نگه داشته شده تا محتوای فرم با محتوای کارت ایرلاین/متدولوژی قاطی نشه. -->
+<div class="sheet-overlay" id="reportSheetOverlay" onclick="closeReportSheet()"></div>
+<div class="bottom-sheet" id="reportSheet" role="dialog" aria-modal="true" aria-label="ساخت گزارش حرفه‌ای">
+  <div class="sheet-handle"></div>
+  <button type="button" class="sheet-close" onclick="closeReportSheet()" aria-label="بستن">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+  </button>
+
+  <div class="rep-head">
+    <div class="rep-head-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3.5h7l5 5V19a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M14 3.5V8a1 1 0 0 0 1 1h4.5"/><path d="M8.5 13h7M8.5 16.2h7M8.5 9.8h3"/></svg>
+    </div>
+    <div>
+      <div class="rep-head-title">ساخت گزارش حرفه‌ای</div>
+      <div class="rep-head-sub">گزینه‌ها را انتخاب کنید، پیش‌نمایش را ببینید، سپس دانلود کنید</div>
+    </div>
+  </div>
+
+  <div class="rep-body">
+
+    <div class="rep-section">
+      <div class="rep-section-lbl">نوع گزارش</div>
+      <div class="rep-types" id="repTypes">
+        <button type="button" class="rep-type-card active" data-type="scorecard" onclick="setReportType('scorecard', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M11 19V5M18 19v-7"/></svg>
+          <b>کارنامه ایرلاین‌ها</b>
+          <span>مقایسه همه ایرلاین‌ها: به‌موقع بودن، میانگین تاخیر، نرخ لغو</span>
+        </button>
+        <button type="button" class="rep-type-card" data-type="delayed" onclick="setReportType('delayed', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 7v5l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+          <b>پرتاخیرترین پروازها</b>
+          <span>فهرست پروازهایی که بیشترین تاخیر را داشته‌اند</span>
+        </button>
+        <button type="button" class="rep-type-card" data-type="trend" onclick="setReportType('trend', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l5-6 4 3 6-8M3 20h18"/></svg>
+          <b>روند روزانه</b>
+          <span>روند تاخیر روز به روز در بازه انتخابی</span>
+        </button>
+        <button type="button" class="rep-type-card" data-type="airline" onclick="setReportType('airline', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 3.5L4 10l2.5.6 1 3 2-1.5 3 4.5 1.5-.5-1-6 5-5-1-2-6 3.5-3-2.5z"/></svg>
+          <b>گزارش یک ایرلاین</b>
+          <span>گزارش اختصاصی و تفکیک مسیر برای یک ایرلاین خاص</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="rep-section">
+      <div class="rep-section-lbl">بازه زمانی</div>
+      <div class="rep-chips" id="repRangeChips">
+        <button type="button" class="rep-chip" data-range="today" onclick="setReportRange('today', this)">امروز</button>
+        <button type="button" class="rep-chip" data-range="7d" onclick="setReportRange('7d', this)">۷ روز اخیر</button>
+        <button type="button" class="rep-chip active" data-range="30d" onclick="setReportRange('30d', this)">۳۰ روز اخیر</button>
+        <button type="button" class="rep-chip" data-range="all" onclick="setReportRange('all', this)">کل دادگان موجود</button>
+      </div>
+    </div>
+
+    <div class="rep-section">
+      <div class="rep-section-lbl">فیلتر مسیر (اختیاری)</div>
+      <div class="rep-row">
+        <div>
+          <span class="rep-field-lbl">مبدا</span>
+          <select class="rep-select" id="repOrigin"><option value="">همه مبداها</option></select>
+        </div>
+        <div>
+          <span class="rep-field-lbl">مقصد</span>
+          <select class="rep-select" id="repDest"><option value="">همه مقصدها</option></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="rep-section" id="repAirlineField" style="display:none;">
+      <div class="rep-section-lbl">ایرلاین</div>
+      <select class="rep-select" id="repAirline"><option value="">— انتخاب ایرلاین —</option></select>
+    </div>
+
+    <div class="rep-section" id="repLimitField" style="display:none;">
+      <div class="rep-section-lbl">تعداد ردیف نمایش</div>
+      <div class="rep-chips" id="repLimitChips">
+        <button type="button" class="rep-chip" data-limit="10" onclick="setReportLimit(10, this)">۱۰ پرواز</button>
+        <button type="button" class="rep-chip active" data-limit="25" onclick="setReportLimit(25, this)">۲۵ پرواز</button>
+        <button type="button" class="rep-chip" data-limit="50" onclick="setReportLimit(50, this)">۵۰ پرواز</button>
+      </div>
+    </div>
+
+    <div class="rep-section">
+      <div class="rep-section-lbl">تهیه‌شده برای (اختیاری)</div>
+      <input type="text" class="rep-input" id="repCompany" placeholder="مثلاً: چارتر پرشین گلف یا نام ایرلاین شما">
+    </div>
+
+    <button type="button" class="rep-generate-btn" id="repGenerateBtn" onclick="generateReportPreview()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 3v4a1 1 0 0 1-1 1H4M4 3h9l7 7v11H4z"/></svg>
+      ساخت پیش‌نمایش گزارش
+    </button>
+
+    <div class="rep-preview-wrap" id="repPreviewWrap" style="display:none;">
+      <div class="rep-preview-lbl">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>
+        پیش‌نمایش گزارش
+      </div>
+      <div id="repPreviewArea"></div>
+      <button type="button" class="rep-download-btn" id="repDownloadBtn" style="display:none;" onclick="downloadReportPDF()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v13m0 0-4.5-4.5M12 16l4.5-4.5"/><path d="M4 19.5h16"/></svg>
+        <span id="repDownloadLabel">دانلود PDF</span>
+      </button>
+    </div>
+
+  </div>
 </div>
 
 <!-- Chart.js عمداً اینجاست، نه توی <head> — اونجا کل رندر HTML رو تا وقتی
@@ -1760,7 +2046,7 @@ function closeBottomSheet(){
   document.body.style.overflow = '';
 }
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeBottomSheet();
+  if (e.key === 'Escape') { closeBottomSheet(); closeReportSheet(); }
 });
 
 /* لوگو ایرلاین‌ها: یه پوشه به اسم logos کنار همین فایل html در گیت‌هاب بساز
@@ -2857,6 +3143,428 @@ function renderFlightData(json){
   safeRun(() => renderTiming(allFlights), 'الگوی زمانی');
   safeRun(() => populateFilterDestination(), 'دراپ‌داون مقصد جدول');
   safeRun(() => applyFilters(), 'جدول دادگان');
+}
+
+/* ==================================================================
+   ابزار گزارش‌گیری حرفه‌ای (برای ایرلاین‌ها/چارترکنندگان)
+   کاملاً سمت کلاینت و روی همون allFlights که از /api/flights میاد کار
+   می‌کنه — بدون فراخوانی سرور اضافه. برای اینکه معیارها درست باشن (و
+   دقیقاً هم‌راستا با نکته‌ای که بقیه صفحه رعایت می‌کنه: پروازهای هنوز
+   انجام‌نشده رو پیش‌فرض «به‌موقع» حساب نکن)، فقط پروازهایی که واقعاً
+   landed یا cancelled شدن وارد محاسبه می‌شن.
+   ================================================================== */
+let reportType = 'scorecard';   // scorecard | delayed | trend | airline
+let reportRange = '30d';        // today | 7d | 30d | all
+let reportLimit = 25;
+
+function setReportType(type, btn){
+  reportType = type;
+  document.querySelectorAll('#repTypes .rep-type-card').forEach(el => el.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('repAirlineField').style.display = (type === 'airline') ? 'block' : 'none';
+  document.getElementById('repLimitField').style.display = (type === 'delayed') ? 'block' : 'none';
+}
+function setReportRange(range, btn){
+  reportRange = range;
+  document.querySelectorAll('#repRangeChips .rep-chip').forEach(el => el.classList.remove('active'));
+  btn.classList.add('active');
+}
+function setReportLimit(limit, btn){
+  reportLimit = limit;
+  document.querySelectorAll('#repLimitChips .rep-chip').forEach(el => el.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function openReportSheet(){
+  populateReportSelects();
+  document.getElementById('reportSheetOverlay').classList.add('open');
+  document.getElementById('reportSheet').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeReportSheet(){
+  document.getElementById('reportSheetOverlay').classList.remove('open');
+  document.getElementById('reportSheet').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// گزینه‌های مبدا/مقصد/ایرلاین رو هر بار که شیت باز می‌شه از روی خودِ
+// allFlights تازه می‌سازه — این‌جوری همیشه با آخرین دادگان لود‌شده هماهنگه.
+function populateReportSelects(){
+  const originSel = document.getElementById('repOrigin');
+  const destSel = document.getElementById('repDest');
+  const airlineSel = document.getElementById('repAirline');
+
+  const prevOrigin = originSel.value, prevDest = destSel.value, prevAirline = airlineSel.value;
+
+  const originCodes = [...new Set(allFlights.map(f => f.dep_iata).filter(Boolean))].sort();
+  const destCodes = [...new Set(allFlights.map(f => f.arr_iata).filter(Boolean))].sort();
+  const airlineNames = [...new Set(allFlights.map(f => f.airline).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fa'));
+
+  originSel.innerHTML = '<option value="">همه مبداها</option>' + originCodes.map(c =>
+    `<option value="${c}">${AIRPORT_FA[c] ? AIRPORT_FA[c] + ' (' + c + ')' : c}</option>`).join('');
+  destSel.innerHTML = '<option value="">همه مقصدها</option>' + destCodes.map(c =>
+    `<option value="${c}">${AIRPORT_FA[c] ? AIRPORT_FA[c] + ' (' + c + ')' : c}</option>`).join('');
+  airlineSel.innerHTML = '<option value="">— انتخاب ایرلاین —</option>' + airlineNames.map(n =>
+    `<option value="${n}">${n}</option>`).join('');
+
+  if (originCodes.includes(prevOrigin)) originSel.value = prevOrigin;
+  if (destCodes.includes(prevDest)) destSel.value = prevDest;
+  if (airlineNames.includes(prevAirline)) airlineSel.value = prevAirline;
+}
+
+function reportRangeStart(range){
+  const now = new Date();
+  if (range === 'today') { const d = new Date(now); d.setHours(0, 0, 0, 0); return d; }
+  if (range === '7d') return new Date(now.getTime() - 7 * 86400000);
+  if (range === '30d') return new Date(now.getTime() - 30 * 86400000);
+  return null; // کل بازه دادگان موجود
+}
+function reportRangeLabel(range){
+  return { today: 'امروز', '7d': '۷ روز اخیر', '30d': '۳۰ روز اخیر', all: 'کل بازه دادگان موجود' }[range] || '—';
+}
+function reportRouteLabel(origin, dest){
+  const o = origin ? (AIRPORT_FA[origin] || origin) : '';
+  const d = dest ? (AIRPORT_FA[dest] || dest) : '';
+  if (o && d) return `${o} → ${d}`;
+  if (o) return `مبدا: ${o}`;
+  if (d) return `مقصد: ${d}`;
+  return 'همه مسیرها';
+}
+
+// فقط پروازهای نهایی‌شده (نشسته یا لغوشده) — هماهنگ با منطقی که بقیه
+// صفحه هم رعایت می‌کنه: پروازِ هنوز پروازنکرده رو «به‌موقع» فرض نکن.
+function reportCompletedFlights({ origin = '', dest = '', airline = '' } = {}){
+  const start = reportRangeStart(reportRange);
+  const now = new Date();
+  return allFlights.filter(f => {
+    if (!(f.status === 'landed' || f.status === 'cancelled')) return false;
+    if (!f.dep_scheduled) return false;
+    const d = new Date(f.dep_scheduled);
+    if (isNaN(d)) return false;
+    if (start && d < start) return false;
+    if (d > now) return false;
+    if (origin && f.dep_iata !== origin) return false;
+    if (dest && f.arr_iata !== dest) return false;
+    if (airline && f.airline !== airline) return false;
+    return true;
+  });
+}
+
+function aggregateByAirline(flights){
+  const map = new Map();
+  flights.forEach(f => {
+    const name = f.airline || 'نامشخص';
+    if (!map.has(name)) map.set(name, { name, total: 0, delayed: 0, cancelled: 0, delaySum: 0, delaySamples: 0 });
+    const g = map.get(name);
+    g.total++;
+    if (f.status === 'cancelled') { g.cancelled++; return; }
+    const d = delayOf(f);
+    if (d > 0) g.delayed++;
+    g.delaySum += d; g.delaySamples++;
+  });
+  return [...map.values()].map(g => ({
+    ...g,
+    onTimeRate: g.total ? ((g.total - g.delayed - g.cancelled) / g.total) * 100 : 0,
+    avgDelay: g.delaySamples ? g.delaySum / g.delaySamples : 0,
+    cancelledRate: g.total ? (g.cancelled / g.total) * 100 : 0
+  }));
+}
+function aggregateByDay(flights){
+  const map = new Map();
+  flights.forEach(f => {
+    const key = dayKey(f.dep_scheduled);
+    if (!key) return;
+    if (!map.has(key)) map.set(key, { key, total: 0, delayed: 0, cancelled: 0, delaySum: 0, delaySamples: 0 });
+    const g = map.get(key);
+    g.total++;
+    if (f.status === 'cancelled') { g.cancelled++; return; }
+    const d = delayOf(f);
+    if (d > 0) g.delayed++;
+    g.delaySum += d; g.delaySamples++;
+  });
+  return [...map.values()].sort((a, b) => a.key.localeCompare(b.key)).map(g => ({
+    ...g,
+    onTimeRate: g.total ? ((g.total - g.delayed - g.cancelled) / g.total) * 100 : 0,
+    avgDelay: g.delaySamples ? g.delaySum / g.delaySamples : 0
+  }));
+}
+function airlineRouteBreakdown(flights, airlineName){
+  const subset = flights.filter(f => f.airline === airlineName);
+  const map = new Map();
+  subset.forEach(f => {
+    const route = `${f.dep_iata}-${f.arr_iata}`;
+    if (!map.has(route)) map.set(route, { route, total: 0, delayed: 0, cancelled: 0, delaySum: 0, delaySamples: 0 });
+    const g = map.get(route);
+    g.total++;
+    if (f.status === 'cancelled') { g.cancelled++; return; }
+    const d = delayOf(f);
+    if (d > 0) g.delayed++;
+    g.delaySum += d; g.delaySamples++;
+  });
+  return [...map.values()].map(g => ({
+    ...g,
+    onTimeRate: g.total ? ((g.total - g.delayed - g.cancelled) / g.total) * 100 : 0,
+    avgDelay: g.delaySamples ? g.delaySum / g.delaySamples : 0
+  })).sort((a, b) => b.total - a.total);
+}
+function mostDelayedFlights(flights, limit){
+  return [...flights]
+    .filter(f => f.status !== 'cancelled')
+    .sort((a, b) => delayOf(b) - delayOf(a))
+    .slice(0, limit);
+}
+
+function repBar(value, max){
+  const pct = max > 0 ? Math.max(4, Math.min(100, (value / max) * 100)) : 4;
+  return `<div class="rep-bar-cell"><span class="num">${toFa(Math.round(value))}′</span><div class="rep-bar-track"><div class="rep-bar-fill" style="width:${pct}%"></div></div></div>`;
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function docStats(items){
+  return `<div class="rep-doc-stats">${items.map(([val, lbl]) =>
+    `<div class="rep-doc-stat"><b class="num">${val}</b><span>${lbl}</span></div>`).join('')}</div>`;
+}
+function buildDocHead(titleFa, meta){
+  const now = new Date();
+  return `<div class="rep-doc-head">
+    <div class="rep-doc-brand"><b>بی‌پرده</b><span class="mono">BI-PARDE · FLIGHT INTELLIGENCE</span></div>
+    <div class="rep-doc-title">${titleFa}</div>
+    <div class="rep-doc-meta">
+      <span>بازه: ${meta.range}</span>
+      <span>مسیر: ${meta.route}</span>
+      <span>تولید: ${fmtDate(now.toISOString())} · ${fmtTime(now.toISOString())}</span>
+    </div>
+  </div>`;
+}
+function buildDocFoot(flightCount){
+  return `<div class="rep-doc-foot">
+    <span>بر اساس ${toFa(flightCount)} پرواز نهایی‌شده (نشسته/لغوشده) از دادگان عمومی FIDS فرودگاه‌ها.</span>
+    <span>بی‌پرده · گزارش تحقیقاتی مستقل</span>
+  </div>`;
+}
+function wrapDoc(headHtml, bodyInnerHtml){
+  return `<div class="rep-doc" id="repDocNode">${headHtml}<div class="rep-doc-body">${bodyInnerHtml}</div></div>`;
+}
+
+function generateReportPreview(){
+  const origin = document.getElementById('repOrigin').value;
+  const dest = document.getElementById('repDest').value;
+  const airlineSel = document.getElementById('repAirline');
+  const airline = airlineSel ? airlineSel.value : '';
+  const company = document.getElementById('repCompany').value.trim();
+
+  const previewArea = document.getElementById('repPreviewArea');
+  const wrap = document.getElementById('repPreviewWrap');
+  const dlBtn = document.getElementById('repDownloadBtn');
+
+  if (reportType === 'airline' && !airline) {
+    previewArea.innerHTML = '<div class="empty-hint">برای این نوع گزارش، ابتدا یک ایرلاین از فهرست بالا انتخاب کنید.</div>';
+    wrap.style.display = 'block'; dlBtn.style.display = 'none';
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+
+  const flights = reportCompletedFlights({ origin, dest, airline });
+  if (!flights.length) {
+    previewArea.innerHTML = '<div class="empty-hint">با این فیلترها هیچ پرواز نهایی‌شده‌ای در دادگان یافت نشد. بازه یا فیلتر دیگری را امتحان کنید.</div>';
+    wrap.style.display = 'block'; dlBtn.style.display = 'none';
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+
+  const meta = { range: reportRangeLabel(reportRange), route: reportRouteLabel(origin, dest) };
+  const completedNonCancelled = flights.filter(f => f.status !== 'cancelled');
+  let titleFa = '', statsHtml = '', tableHtml = '';
+
+  if (reportType === 'scorecard') {
+    titleFa = 'کارنامه مقایسه‌ای ایرلاین‌ها';
+    const rows = aggregateByAirline(flights).sort((a, b) => b.onTimeRate - a.onTimeRate);
+    const onTimeAll = completedNonCancelled.filter(f => delayOf(f) <= 0).length;
+    const avgDelayAll = completedNonCancelled.reduce((s, f) => s + delayOf(f), 0) / (completedNonCancelled.length || 1);
+    statsHtml = docStats([
+      [toFa(flights.length), 'کل پرواز'],
+      [toFa(rows.length), 'ایرلاین'],
+      [toFa(Math.round((onTimeAll / (completedNonCancelled.length || 1)) * 100)) + '٪', 'به‌موقع کلی'],
+      [toFa(Math.round(avgDelayAll)) + '′', 'میانگین تاخیر']
+    ]);
+    tableHtml = `<table class="rep-table"><thead><tr>
+      <th>#</th><th>ایرلاین</th><th>پرواز</th><th>به‌موقع</th><th>میانگین تاخیر</th><th>نرخ لغو</th>
+    </tr></thead><tbody>${rows.map((a, i) => `
+      <tr>
+        <td class="num">${toFa(i + 1)}</td>
+        <td>${a.name}</td>
+        <td class="num">${toFa(a.total)}</td>
+        <td class="num">${toFa(a.onTimeRate.toFixed(0))}٪</td>
+        <td class="num">${toFa(Math.round(a.avgDelay))}′</td>
+        <td class="num">${toFa(a.cancelledRate.toFixed(0))}٪</td>
+      </tr>`).join('')}</tbody></table>`;
+
+  } else if (reportType === 'delayed') {
+    titleFa = 'پرتاخیرترین پروازها';
+    const list = mostDelayedFlights(flights, reportLimit);
+    const maxDelay = Math.max(...list.map(f => delayOf(f)), 1);
+    const cancelledCount = flights.filter(f => f.status === 'cancelled').length;
+    statsHtml = docStats([
+      [toFa(flights.length), 'کل پرواز'],
+      [toFa(list.length), 'ردیف نمایش‌داده‌شده'],
+      [toFa(Math.round(maxDelay)) + '′', 'بیشترین تاخیر'],
+      [toFa(cancelledCount), 'لغوشده (جدا)']
+    ]);
+    tableHtml = `<table class="rep-table"><thead><tr>
+      <th>#</th><th>تاریخ</th><th>ساعت</th><th>ایرلاین</th><th>مسیر</th><th>تاخیر</th>
+    </tr></thead><tbody>${list.map((f, i) => `
+      <tr>
+        <td class="num">${toFa(i + 1)}</td>
+        <td>${fmtDate(f.dep_scheduled)}</td>
+        <td class="num">${fmtTime(f.dep_scheduled)}</td>
+        <td>${f.airline || '—'}</td>
+        <td class="mono">${faRoute(f.dep_iata + '-' + f.arr_iata)}</td>
+        <td>${repBar(delayOf(f), maxDelay)}</td>
+      </tr>`).join('')}</tbody></table>`;
+
+  } else if (reportType === 'trend') {
+    titleFa = 'روند روزانه تاخیر';
+    const days = aggregateByDay(flights);
+    const maxAvg = Math.max(...days.map(d => d.avgDelay), 1);
+    const worst = [...days].sort((a, b) => b.avgDelay - a.avgDelay)[0];
+    const avgAll = completedNonCancelled.reduce((s, f) => s + delayOf(f), 0) / (completedNonCancelled.length || 1);
+    statsHtml = docStats([
+      [toFa(flights.length), 'کل پرواز'],
+      [toFa(days.length), 'روز'],
+      [worst ? toFa(Math.round(worst.avgDelay)) + '′' : '—', 'بدترین میانگین روزانه'],
+      [toFa(Math.round(avgAll)) + '′', 'میانگین کل بازه']
+    ]);
+    tableHtml = `<table class="rep-table"><thead><tr>
+      <th>تاریخ</th><th>روز</th><th>پرواز</th><th>به‌موقع</th><th>میانگین تاخیر</th>
+    </tr></thead><tbody>${days.map(d => `
+      <tr>
+        <td class="mono">${d.key}</td>
+        <td>${fmtWeekday(new Date(d.key).toISOString())}</td>
+        <td class="num">${toFa(d.total)}</td>
+        <td class="num">${toFa(d.onTimeRate.toFixed(0))}٪</td>
+        <td>${repBar(d.avgDelay, maxAvg)}</td>
+      </tr>`).join('')}</tbody></table>`;
+
+  } else if (reportType === 'airline') {
+    titleFa = `گزارش اختصاصی — ${airline}`;
+    const routes = airlineRouteBreakdown(flights, airline);
+    const onTimeCount = completedNonCancelled.filter(f => delayOf(f) <= 0).length;
+    const cancelledCount = flights.filter(f => f.status === 'cancelled').length;
+    const avgDelay = completedNonCancelled.reduce((s, f) => s + delayOf(f), 0) / (completedNonCancelled.length || 1);
+    statsHtml = docStats([
+      [toFa(flights.length), 'کل پرواز'],
+      [toFa(Math.round((onTimeCount / (completedNonCancelled.length || 1)) * 100)) + '٪', 'به‌موقع'],
+      [toFa(Math.round(avgDelay)) + '′', 'میانگین تاخیر'],
+      [toFa(Math.round((cancelledCount / (flights.length || 1)) * 100)) + '٪', 'نرخ لغو']
+    ]);
+    const topDelayed = mostDelayedFlights(flights, 8);
+    tableHtml = `<table class="rep-table"><thead><tr>
+        <th>#</th><th>مسیر</th><th>پرواز</th><th>به‌موقع</th><th>میانگین تاخیر</th>
+      </tr></thead><tbody>${routes.map((r, i) => `
+        <tr>
+          <td class="num">${toFa(i + 1)}</td>
+          <td class="mono">${faRoute(r.route)}</td>
+          <td class="num">${toFa(r.total)}</td>
+          <td class="num">${toFa(r.onTimeRate.toFixed(0))}٪</td>
+          <td class="num">${toFa(Math.round(r.avgDelay))}′</td>
+        </tr>`).join('')}</tbody></table>
+      ${topDelayed.length ? `
+      <div class="rep-subtitle">پرتاخیرترین پروازهای ${airline} در این بازه</div>
+      <table class="rep-table"><thead><tr>
+        <th>#</th><th>تاریخ</th><th>مسیر</th><th>تاخیر</th>
+      </tr></thead><tbody>${topDelayed.map((f, i) => `
+        <tr>
+          <td class="num">${toFa(i + 1)}</td>
+          <td>${fmtDate(f.dep_scheduled)}</td>
+          <td class="mono">${faRoute(f.dep_iata + '-' + f.arr_iata)}</td>
+          <td class="num">${toFa(delayOf(f))}′</td>
+        </tr>`).join('')}</tbody></table>` : ''}`;
+  }
+
+  const headHtml = buildDocHead(titleFa, meta);
+  const bodyInner = `
+    ${company ? `<div class="rep-doc-forwhom">تهیه‌شده برای: <b>${escapeHtml(company)}</b></div>` : ''}
+    ${statsHtml}
+    ${tableHtml}
+    ${buildDocFoot(flights.length)}`;
+
+  previewArea.innerHTML = wrapDoc(headHtml, bodyInner);
+  wrap.style.display = 'block';
+  dlBtn.style.display = 'flex';
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/* ---------- خروجی PDF ----------
+   کتابخانه‌های html2canvas/jsPDF فقط همون لحظه‌ای که کاربر واقعاً دانلود
+   رو می‌زنه لود می‌شن (نه توی لود اولیه صفحه) تا حجم اولیه سایت رو
+   سنگین نکنن. سند پیش‌نمایش (که خودِ کاربر می‌بینه) دقیقاً همون چیزیه
+   که از روش عکس گرفته می‌شه و توی PDF قرار می‌گیره — پس پیش‌نمایش واقعاً
+   پیش‌نمایشِ خودِ فایل نهاییه، نه یک نسخه جدا. */
+function loadScriptOnce(src){
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('بارگذاری کتابخانه ناموفق بود: ' + src));
+    document.head.appendChild(s);
+  });
+}
+let reportLibsPromise = null;
+function ensureReportLibs(){
+  if (!reportLibsPromise) {
+    reportLibsPromise = Promise.all([
+      loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+      loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+    ]);
+  }
+  return reportLibsPromise;
+}
+function pdfFilename(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+  return `biparde-report-${reportType}-${stamp}.pdf`;
+}
+async function downloadReportPDF(){
+  const node = document.getElementById('repDocNode');
+  if (!node) return;
+  const btn = document.getElementById('repDownloadBtn');
+  const label = document.getElementById('repDownloadLabel');
+  btn.classList.add('loading'); btn.disabled = true;
+  const prevLabel = label.textContent;
+  label.textContent = 'در حال ساخت PDF…';
+  try {
+    await ensureReportLibs();
+    if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+    const canvas = await html2canvas(node, { scale: 2, backgroundColor: '#FFFDF8', useCORS: true });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    let heightLeft = imgHeight;
+    let position = 0;
+    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+    pdf.save(pdfFilename());
+  } catch (err) {
+    console.error('خطا در ساخت PDF گزارش:', err);
+    alert('ساخت فایل PDF با خطا مواجه شد. لطفاً دوباره تلاش کنید.');
+  } finally {
+    btn.classList.remove('loading'); btn.disabled = false;
+    label.textContent = prevLabel;
+  }
 }
 
 renderIndependentSections();
