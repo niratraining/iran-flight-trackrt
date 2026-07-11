@@ -10,6 +10,7 @@
 
 import { kv } from './kv.js';
 import { fetchAirportViaFids, IATA_TO_FIDS_ID } from './fids-scraper.js';
+import { fetchAirportViaIkac } from './ikac-scraper.js';
 
 export const ALL_AIRPORTS = [
   { iata: 'THR', name: 'تهران – مهرآباد', group: 'main' },
@@ -61,10 +62,11 @@ export const MAIN_AIRPORTS = ALL_AIRPORTS.filter(a => a.group === 'main').map(a 
 export const OTHER_AIRPORTS = ALL_AIRPORTS.filter(a => a.group === 'other').map(a => a.iata);
 
 // فرودگاه‌هایی که از FIDS (اسکرپ رایگان fids.airport.ir) پوشش داده می‌شن.
-// بقیه (فعلاً IKA, KIH, ZBR) هیچ منبع داده‌ای ندارن — از وقتی aviationstack
-// حذف شد، fetchAllFlightsForAirport براشون یه لیست خالی برمی‌گردونه (بدون
-// خطا)، پس توی جدول و آمار «بدون داده» نشون داده می‌شن ولی همچنان توی
-// لیست فرودگاه‌ها می‌مونن.
+// IKA دیگه اینجا نیست چون پورتال جدای خودش رو داره (lib/ikac-scraper.js،
+// ببین فراخوانیش توی fetchAllFlightsForAirport). بقیه (فعلاً KIH, ZBR)
+// هنوز هیچ منبع داده‌ای ندارن — fetchAllFlightsForAirport براشون یه لیست
+// خالی برمی‌گردونه (بدون خطا)، پس توی جدول و آمار «بدون داده» نشون داده
+// می‌شن ولی همچنان توی لیست فرودگاه‌ها می‌مونن.
 export const FIDS_COVERED_AIRPORTS = ALL_AIRPORTS
   .filter(a => Boolean(IATA_TO_FIDS_ID[a.iata]))
   .map(a => a.iata);
@@ -100,6 +102,14 @@ async function fetchAllFlightsForAirport(airport) {
   if (IATA_TO_FIDS_ID[airport]) {
     const json = await fetchAirportViaFids(airport);
     return { data: json.data, calls_used: 0, key_used: null, source: 'fids' };
+  }
+  // IKA پوشش FIDS نداره ولی پورتال جدای خودش (ikac.ir) رو داره —
+  // lib/ikac-scraper.js. اگه این فچ خطا بده (مثلاً بلاک از بیرون ایران)
+  // به بالا throw می‌شه و trackSingleAirport اون رو به‌عنوان 'error' لاگ
+  // می‌کنه (نه این‌که ساکت خالی برگرده) تا مشکل واقعی از چشم دیده نمونه.
+  if (airport === 'IKA') {
+    const json = await fetchAirportViaIkac();
+    return { data: json.data, calls_used: 0, key_used: null, source: 'ikac' };
   }
   // بدون پوشش FIDS و بدون aviationstack: نه خطا بده نه crash کنه، فقط
   // خالی برگردون تا trackAirports این فرودگاه رو 'ok' با ۰ پرواز ثبت کنه.
