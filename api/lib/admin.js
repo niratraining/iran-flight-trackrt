@@ -5,13 +5,7 @@
 // ------------------------------------------------------------------
 
 import { kv } from './kv.js';
-import { ALL_AIRPORTS, KEY_SLOTS, getConfiguredKeys } from './flights.js';
-
-function currentYyyyMm(date = new Date()) {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-  return `${y}-${m}`;
-}
+import { ALL_AIRPORTS } from './flights.js';
 
 export async function handleAdmin(req, res) {
   const secret = process.env.REFRESH_SECRET;
@@ -35,65 +29,13 @@ export async function handleAdmin(req, res) {
 }
 
 async function buildAdminData() {
-  const month = currentYyyyMm();
-  const now = new Date();
-  const dayOfMonth = now.getUTCDate();
-
-  const keys = getConfiguredKeys();
-  const keyStats = [];
-
-  for (const k of keys) {
-    const raw = await kv.get(`key_usage:${k.index}:${month}`);
-    const usage = parseInt(raw || '0', 10);
-    const remaining = Math.max(0, 100 - usage);
-    const dailyAvg = usage / Math.max(1, dayOfMonth);
-
-    let eta = null;
-    let etaLabel = 'نامشخص';
-    if (usage >= 100) {
-      etaLabel = 'تمام شده';
-    } else if (dailyAvg > 0) {
-      const daysLeft = remaining / dailyAvg;
-      const etaDate = new Date(now.getTime() + daysLeft * 86400000);
-      eta = etaDate.toISOString().slice(0, 10);
-      etaLabel = eta;
-    }
-
-    keyStats.push({
-      index: k.index,
-      envName: k.envName,
-      usage,
-      remaining,
-      pct: Math.min(100, usage),
-      dailyAvg: dailyAvg.toFixed(2),
-      eta,
-      etaLabel
-    });
-  }
-
   const airportStats = [];
   for (const a of ALL_AIRPORTS) {
     const lastRun = await kv.get(`last_run:${a.iata}`);
     airportStats.push({ iata: a.iata, name: a.name, group: a.group, lastRun: lastRun || '—' });
   }
 
-  const totalRemaining = keyStats.reduce((sum, k) => sum + k.remaining, 0);
-  const warnCount = keyStats.filter(k => k.usage >= 90).length;
-
-  let nearestEta = null;
-  for (const k of keyStats) {
-    if (k.eta && (!nearestEta || k.eta < nearestEta)) nearestEta = k.eta;
-  }
-
-  return {
-    keyStats,
-    airportStats,
-    totalRemaining,
-    warnCount,
-    nearestEta: nearestEta || '—',
-    month,
-    keySlotsFree: KEY_SLOTS - keys.length
-  };
+  return { airportStats };
 }
 
 function renderLoginPage() {
@@ -165,21 +107,6 @@ function renderLoginPage() {
 }
 
 function renderAdminPage(data, token) {
-  const keyRows = data.keyStats.map(k => {
-    const color = k.pct >= 90 ? '#d64545' : (k.pct >= 70 ? '#e0a52c' : '#3f9d5c');
-    return `
-      <tr>
-        <td>${k.envName}</td>
-        <td>${k.usage} / 100</td>
-        <td>
-          <div class="bar"><div class="bar-fill" style="width:${k.pct}%;background:${color}"></div></div>
-        </td>
-        <td>${k.remaining}</td>
-        <td>${k.dailyAvg}</td>
-        <td>${k.etaLabel}</td>
-      </tr>`;
-  }).join('');
-
   const airportRows = data.airportStats.map(a => `
       <tr>
         <td>${a.name}</td>
@@ -271,43 +198,6 @@ function renderAdminPage(data, token) {
 </head>
 <body>
   <h1>پنل مدیریت — ردیابی پروازها</h1>
-  <div class="subtitle">ماه جاری: ${data.month}</div>
-
-  <div class="summary">
-    <div class="summary-card">
-      <div class="num">${data.totalRemaining}</div>
-      <div class="label">جمع درخواست باقی‌مانده</div>
-    </div>
-    <div class="summary-card">
-      <div class="num">${data.nearestEta}</div>
-      <div class="label">نزدیک‌ترین تاریخ اتمام سهمیه</div>
-    </div>
-    <div class="summary-card">
-      <div class="num">${data.warnCount}</div>
-      <div class="label">کلید بالای ۹۰٪ مصرف</div>
-    </div>
-    <div class="summary-card">
-      <div class="num">${data.keySlotsFree}</div>
-      <div class="label">اسلات خالی رزرو</div>
-    </div>
-  </div>
-
-  <h2>وضعیت کلیدهای API</h2>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>نام کلید</th>
-          <th>مصرف/سقف</th>
-          <th>درصد مصرف</th>
-          <th>باقی‌مانده</th>
-          <th>میانگین روزانه</th>
-          <th>تاریخ تخمینی اتمام</th>
-        </tr>
-      </thead>
-      <tbody>${keyRows || '<tr><td colspan="6">هیچ کلیدی تنظیم نشده</td></tr>'}</tbody>
-    </table>
-  </div>
 
   <h2>فرودگاه‌ها</h2>
   <div class="table-wrap">
