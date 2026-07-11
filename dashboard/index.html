@@ -1117,14 +1117,14 @@
 
 <div class="story">
   <div class="manifesto">
-    <button type="button" class="manifesto-trigger" onclick="openWhySheet()">
+    <a href="https://travellab.ir/article/%D8%AA%D8%B3%D8%AA" target="_blank" rel="noopener" class="manifesto-trigger">
       <h2 class="manifesto-title">چرا هیچ پلتفرمی به شما نمی‌گوید<br><span>کدام پرواز دیر می‌رسد؟</span></h2>
       <p class="manifesto-lede">داده تاخیر ایرلاین‌ها رسمی، رایگان و عمومی است؛ آنچه غایب است، انگیزه فروشنده بلیط برای نشان‌دادنش به شماست. <b>«بی‌پرده»</b> این داده را به‌صورت زنده از فرودگاه‌های مهرآباد و امام خمینی جمع می‌کند.</p>
       <span class="manifesto-cta">
         روایت کامل را بخوان
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </span>
-    </button>
+    </a>
   </div>
 
   <div class="stat-strip">
@@ -1370,8 +1370,21 @@ const AIRPORT_FA = {
   KSH: 'کرمانشاه', AJK: 'اراک', KHK: 'خارک', PGU: 'عسلویه', JAR: 'جاسک',
   DXB: 'دبی', SHJ: 'شارجه', AUH: 'ابوظبی', DOH: 'دوحه',
   ESB: 'آنکارا', AYT: 'آنتالیا', DMS: 'دمشق', BEY: 'بیروت', BGW: 'بغداد',
-  NJF: 'نجف', BSR: 'بصره', EBL: 'اربیل', GYD: 'باکو', ADU: 'اردبیل'
+  NJF: 'نجف', BSR: 'بصره', EBL: 'اربیل', GYD: 'باکو', ADU: 'اردبیل',
+  KHI: 'کراچی', LHE: 'لاهور', ISB: 'اسلام‌آباد', KWI: 'کویت', MCT: 'مسقط',
+  JED: 'جده', MED: 'مدینه', RUH: 'ریاض', DAM: 'دمشق', BAH: 'بحرین'
 };
+// یه رشته‌ی مسیر مثل «MHD-THR» یا حتی مسیر ناهمگون مثل «کراچی-MHD» رو به
+// نام‌های فارسی خوانا برمی‌گردونه (مثلاً «مشهد → مهرآباد»)؛ اگه کدی توی
+// AIRPORT_FA پیدا نشه، همون متن اصلی (که خودش می‌تونه از قبل فارسی باشه)
+// بدون تغییر نگه داشته می‌شه.
+function faRoute(route){
+  if (!route) return route;
+  return String(route).split('-').map(seg => {
+    const key = seg.trim().toUpperCase();
+    return AIRPORT_FA[key] || seg.trim();
+  }).join(' → ');
+}
 
 // هماهنگ با worker.js: ALL_AIRPORTS — همون ۲۰ فرودگاهی که واقعاً رصد می‌شن.
 // قبلاً originSelect و filterAirport فقط IKA/THR داشتن، درحالی‌که worker.js
@@ -1598,7 +1611,7 @@ function openAirlineSheet(idx){
   const level = riskLevel(a.onTimeRate, a.cancelledRate);
   const reason = riskReason(a.onTimeRate, a.cancelledRate);
   const routesHtml = a.routes.length
-    ? a.routes.map(r => `<div class="drawer-route-row"><span>${r.route}</span><span class="num">${toFa(r.onTimeRate.toFixed(0))}٪ به‌موقع · ${toFa(r.total)} پرواز</span></div>`).join('')
+    ? a.routes.map(r => `<div class="drawer-route-row"><span>${faRoute(r.route)}</span><span class="num">${toFa(r.onTimeRate.toFixed(0))}٪ به‌موقع · ${toFa(r.total)} پرواز</span></div>`).join('')
     : '<div class="drawer-route-row"><span>داده مسیر جداگانه کافی نیست</span></div>';
 
   document.getElementById('bottomSheetBody').innerHTML = `
@@ -1767,6 +1780,19 @@ const AIRLINE_LOGOS = {
   'ساها': 'logos/saha.svg',
   'پارس': 'logos/pars.svg',
   'کیش ایر': 'logos/kishair.svg',
+  'آساجت': 'logos/asajet.svg',
+  'آسمان': 'logos/aseman.svg',
+  'آوا': 'logos/ava.svg',
+  'چابهار': 'logos/chabahar.svg',
+  'ماهان': 'logos/mahan.svg',
+  'معراج': 'logos/meraj.svg',
+  'نسیم‌ایر': 'logos/nasimair.svg',
+  'قشم ایر': 'logos/qeshm.svg',
+  'رایمون': 'logos/reymoon.svg',
+  'سپهران': 'logos/sepehran.svg',
+  'سروش ایر': 'logos/soroush.svg',
+  'تابان': 'logos/taban.svg',
+  'وارش': 'logos/varesh.svg',
 };
 
 let allFlights = [];
@@ -2268,7 +2294,7 @@ function renderHeatDetail(a){
     : `<span class="bubble-initial" style="color:${color};">${initials}</span>`;
   const routes = a.routes || [];
   const routesHtml = routes.length
-    ? routes.map(r => `<div class="heat-route-row"><span>${r.route}</span><span class="num">${toFa(r.onTimeRate.toFixed(0))}٪ به‌موقع</span></div>`).join('')
+    ? routes.map(r => `<div class="heat-route-row"><span>${faRoute(r.route)}</span><span class="num">${toFa(r.onTimeRate.toFixed(0))}٪ به‌موقع</span></div>`).join('')
     : '<div class="heat-route-row"><span>داده مسیر جداگانه کافی نیست</span></div>';
 
   const detail = document.getElementById('heatDetail');
@@ -2542,7 +2568,7 @@ async function renderLeaderboard(){
     const level = riskLevel(a.onTimeRate, a.cancelledRate);
     const color = level === 'low' ? '#0E9D5A' : level === 'mid' ? '#F2A20C' : '#E1372F';
     const routesHtml = a.routes.length
-      ? a.routes.map(r => `<div class="drawer-route-row"><span>${r.route}</span><span class="num">${toFa(r.onTimeRate.toFixed(0))}٪ به‌موقع · ${toFa(r.total)} پرواز</span></div>`).join('')
+      ? a.routes.map(r => `<div class="drawer-route-row"><span>${faRoute(r.route)}</span><span class="num">${toFa(r.onTimeRate.toFixed(0))}٪ به‌موقع · ${toFa(r.total)} پرواز</span></div>`).join('')
       : '<div class="drawer-route-row"><span>داده مسیر جداگانه کافی نیست</span></div>';
     return `
       <div class="drawer ${level}">
@@ -2574,13 +2600,24 @@ async function renderLeaderboard(){
 }
 
 /* ---------- raw table + pagination ---------- */
-function statusTag(cls){
+// علاوه‌بر رنگ‌بندی دوحالته‌ی همیشگی (که برای آمار و فیلتر صفحه ثابت
+// می‌مونه)، اگه از FIDS یک وضعیت زنده و دقیق‌تر رسیده باشه (در حال
+// پذیرش / پایان پذیرش / پرواز کرد / نشست) همون متن دقیق‌تر رو نشون
+// می‌دیم — درست مثل تابلوی خود فرودگاه — نه فقط «به‌موقع/تاخیردار».
+const LIVE_STATUS_LABELS_FA = {
+  checkin: 'در حال پذیرش',
+  gate_closed: 'پایان پذیرش',
+  active: 'پرواز کرد',
+  landed: 'نشست'
+};
+function statusTag(cls, f){
   const map = {
     'on-time': ['low', 'به‌موقع'], 'delayed': ['high', 'تاخیردار'],
     'cancelled': ['high', 'لغوشده'], 'unknown': ['na', 'نامشخص']
   };
-  const [lvl, label] = map[cls];
-  return `<span class="tag ${lvl}">${label}</span>`;
+  const [lvl, fallbackLabel] = map[cls];
+  const liveLabel = f && LIVE_STATUS_LABELS_FA[f.status];
+  return `<span class="tag ${lvl}">${liveLabel || fallbackLabel}</span>`;
 }
 
 function renderTable(flights){
@@ -2618,7 +2655,7 @@ function renderTable(flights){
         <td data-label="ایرلاین"><svg class="fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10.5 3.5L4 10l2.5.6 1 3 2-1.5 3 4.5 1.5-.5-1-6 5-5-1-2-6 3.5-3-2.5z"/></svg>${f.airline}</td>
         <td class="cell-mono" data-label="پرواز">${f.flight_iata || '—'}</td>
         <td class="${delayCls}" data-label="تاخیر"><span class="delay-block"><span class="num delay-min">${d ? toFa(d) + ' دقیقه' : '—'}</span>${actualTime ? `<span class="num delay-actual">پرواز ساعت ${actualTime}</span>` : ''}</span></td>
-        <td data-label="وضعیت">${statusTag(cls)}</td>
+        <td data-label="وضعیت">${statusTag(cls, f)}</td>
         <td class="mobile-break-1" aria-hidden="true"></td>
         <td class="mobile-break-2" aria-hidden="true"></td>
       </tr>`;
