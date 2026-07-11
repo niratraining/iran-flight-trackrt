@@ -37,113 +37,32 @@ export const ALL_AIRPORTS = [
 export const MAIN_AIRPORTS = ALL_AIRPORTS.filter(a => a.group === 'main').map(a => a.iata);
 export const OTHER_AIRPORTS = ALL_AIRPORTS.filter(a => a.group === 'other').map(a => a.iata);
 
-export const KEY_SLOTS = 12;
+// فرودگاه‌هایی که از FIDS (اسکرپ رایگان fids.airport.ir) پوشش داده می‌شن.
+// بقیه (فعلاً IKA, KIH, ZBR) هیچ منبع داده‌ای ندارن — از وقتی aviationstack
+// حذف شد، fetchAllFlightsForAirport براشون یه لیست خالی برمی‌گردونه (بدون
+// خطا)، پس توی جدول و آمار «بدون داده» نشون داده می‌شن ولی همچنان توی
+// لیست فرودگاه‌ها می‌مونن.
+export const FIDS_COVERED_AIRPORTS = ALL_AIRPORTS
+  .filter(a => Boolean(IATA_TO_FIDS_ID[a.iata]))
+  .map(a => a.iata);
 
 const MIN_SAMPLE_SIZE = 5;
 const BUSY_ROUTE_THRESHOLD = 7;
 const BUSY_WINDOW_DAYS = 7;
 const QUIET_WINDOW_DAYS = 15;
 
-function keyEnvName(n) {
-  return n === 1 ? 'AVIATIONSTACK_KEY' : `AVIATIONSTACK_KEY${n - 1}`;
-}
-
 // ------------------------------------------------------------------
-// API key pool (round-robin بر اساس کمترین مصرف ماه جاری)
+// جمع‌آوری داده — فقط از FIDS (aviationstack کاملاً حذف شده)
 // ------------------------------------------------------------------
-
-function currentYyyyMm(date = new Date()) {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-  return `${y}-${m}`;
-}
-
-export function getConfiguredKeys() {
-  const keys = [];
-  for (let n = 1; n <= KEY_SLOTS; n++) {
-    const envName = keyEnvName(n);
-    const val = process.env[envName];
-    if (val) keys.push({ index: n, key: val, envName });
-  }
-  return keys;
-}
-
-async function selectApiKey() {
-  const keys = getConfiguredKeys();
-  if (keys.length === 0) return null;
-
-  const month = currentYyyyMm();
-  let best = null;
-
-  for (const k of keys) {
-    const raw = await kv.get(`key_usage:${k.index}:${month}`);
-    const usage = parseInt(raw || '0', 10);
-    if (!best || usage < best.usage) {
-      best = { index: k.index, key: k.key, usage };
-    }
-  }
-  return best;
-}
-
-async function incrementKeyUsage(index) {
-  const month = currentYyyyMm();
-  const kvKey = `key_usage:${index}:${month}`;
-  const raw = await kv.get(kvKey);
-  const current = parseInt(raw || '0', 10);
-  await kv.put(kvKey, String(current + 1));
-}
-
-// ------------------------------------------------------------------
-// جمع‌آوری داده
-// ------------------------------------------------------------------
-
-const AVIATIONSTACK_PAGE_SIZE = 100;
-const MAX_PAGES_PER_AIRPORT = 5; // سقف: ۵۰۰ پرواز/فرودگاه/روز
-
-async function fetchAllFlightsForAirportAviationstack(airport) {
-  let offset = 0;
-  let combined = [];
-  let callsUsed = 0;
-  let lastKeyIndex = null;
-
-  for (let page = 0; page < MAX_PAGES_PER_AIRPORT; page++) {
-    const picked = await selectApiKey();
-    if (!picked) {
-      if (combined.length === 0) throw new Error('no API key configured');
-      break;
-    }
-
-    const apiUrl = `http://api.aviationstack.com/v1/flights?access_key=${picked.key}&dep_iata=${airport}&limit=${AVIATIONSTACK_PAGE_SIZE}&offset=${offset}`;
-    const res = await fetch(apiUrl);
-    const json = await res.json();
-    await incrementKeyUsage(picked.index);
-    callsUsed++;
-    lastKeyIndex = picked.index;
-
-    const pageData = json.data || [];
-    combined = combined.concat(pageData);
-
-    const pagination = json.pagination;
-    const total = pagination ? pagination.total : pageData.length;
-    offset += pageData.length;
-
-    if (pageData.length < AVIATIONSTACK_PAGE_SIZE || offset >= total) break;
-  }
-
-  return { data: combined, calls_used: callsUsed, key_used: lastKeyIndex };
-}
 
 async function fetchAllFlightsForAirport(airport) {
   if (IATA_TO_FIDS_ID[airport]) {
-    try {
-      const json = await fetchAirportViaFids(airport);
-      return { data: json.data, calls_used: 0, key_used: null, source: 'fids' };
-    } catch (err) {
-      console.log(`FIDS failed for ${airport}, falling back to aviationstack: ${err}`);
-    }
+    const json = await fetchAirportViaFids(airport);
+    return { data: json.data, calls_used: 0, key_used: null, source: 'fids' };
   }
-  const result = await fetchAllFlightsForAirportAviationstack(airport);
-  return { ...result, source: 'aviationstack' };
+  // بدون پوشش FIDS و بدون aviationstack: نه خطا بده نه crash کنه، فقط
+  // خالی برگردون تا trackAirports این فرودگاه رو 'ok' با ۰ پرواز ثبت کنه.
+  return { data: [], calls_used: 0, key_used: null, source: 'none' };
 }
 
 export async function trackAirports(airportCodes) {
@@ -665,13 +584,26 @@ export async function runNightlyJob() {
   await updateLeaderboardStats(today, byAirlineToday);
 }
 
-// معادل مسیر /api/refresh: یک رفرش دستی (کل لیست یا یک فرودگاه)، بدون
-// classifyRoutes (که فقط cron شبانه صداش می‌زنه — دقیقاً مثل قبل).
-export async function manualRefresh(airportCodes) {
-  const results = await trackAirports(airportCodes);
+// فقط فچ خام پرواز‌ها (بدون آمار/اعتمادپذیری) — سبک، برای کرون مکرر
+// (هر ۱۵ دقیقه) که فقط می‌خواد جدول/وضعیت زنده رو تازه نگه داره.
+export async function refreshFlightsOnly(airportCodes) {
+  return await trackAirports(airportCodes);
+}
+
+// فقط تجمیع آمار روزانه + امتیاز اعتمادپذیری + کارنامه — این بخش فول‌اسکن
+// روی MongoDB می‌زنه (daily_stats:*, flight_log:*)، پس عمداً از فچ خام
+// جدا شده تا با بازه‌ی کندتری (۳۰ دقیقه) صدا زده بشه، نه هر ۱۵ دقیقه.
+export async function refreshStatsOnly() {
   const today = tehranDateStr(new Date());
   const { byAirlineToday } = await aggregateDailyStats(today);
   await updateRollingScores();
   await updateLeaderboardStats(today, byAirlineToday);
+}
+
+// معادل مسیر /api/refresh: یک رفرش دستی کامل (کل لیست یا یک فرودگاه)،
+// بدون classifyRoutes (که فقط کرون شبانه صداش می‌زنه — دقیقاً مثل قبل).
+export async function manualRefresh(airportCodes) {
+  const results = await refreshFlightsOnly(airportCodes);
+  await refreshStatsOnly();
   return results;
 }
