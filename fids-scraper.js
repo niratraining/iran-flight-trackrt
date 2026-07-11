@@ -12,6 +12,10 @@
 
 export const FIDS_BASE_URL = 'https://fids.airport.ir';
 
+// آدرس اپ لیارای شما بعد از دیپلوی (چیزی شبیه https://fids-relay.iran.liara.run).
+// این رو بعد از ساخت اپ روی لیارا با آدرس واقعیش جایگزین کن.
+export const RELAY_BASE_URL = 'https://fids-relay.iran.liara.run';
+
 // شناسه fids -> (اسلاگ آدرس, نام نمایشی). مستقیم از fids_scraper.py کپی شده.
 export const FIDS_AIRPORTS = {
   '2':   ['اطلاعات-پرواز-فرودگاه-مهرآباد', 'فرودگاه مهرآباد'],
@@ -210,15 +214,19 @@ async function parseFidsHtml(html) {
   return result;
 }
 
-// دریافت + پارس یک فرودگاه fids با شناسه fidsId (مثلاً '2' برای مهرآباد)
+// دریافت + پارس یک فرودگاه fids با شناسه fidsId (مثلاً '2' برای مهرآباد).
+// درخواست مستقیماً به fids.airport.ir نمی‌ره (چون از خارج ایران رد می‌شه)،
+// بلکه از واسط لیارا (RELAY_BASE_URL) عبور می‌کنه که خودش از سمت ایران
+// به fids.airport.ir وصل می‌شه.
 export async function fetchFidsAirport(fidsId) {
-  const url = buildFidsUrl(fidsId);
-  const res = await fetch(url, { headers: FETCH_HEADERS });
-  if (!res.ok) throw new Error(`fids fetch failed: ${res.status} ${url}`);
+  const targetUrl = buildFidsUrl(fidsId);
+  const relayUrl = `${RELAY_BASE_URL}/proxy?url=${encodeURIComponent(targetUrl)}`;
+  const res = await fetch(relayUrl);
+  if (!res.ok) throw new Error(`fids relay fetch failed: ${res.status} ${relayUrl}`);
   const html = await res.text();
   const data = await parseFidsHtml(html);
   data.airport_id = fidsId;
-  data.url = url;
+  data.url = targetUrl;
   return data;
 }
 
