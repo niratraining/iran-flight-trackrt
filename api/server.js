@@ -15,6 +15,7 @@ import 'dotenv/config';
 import { initKv } from './lib/kv.js';
 import { cacheGet, cacheSet, cacheDelete } from './lib/cache.js';
 import { handleAdmin } from './lib/admin.js';
+import { safeTokenEqual } from './lib/security.js';
 import {
   ALL_AIRPORTS,
   getAllFlights,
@@ -99,7 +100,7 @@ app.get('/api/refresh', async (req, res) => {
   }
 
   const provided = req.query.token;
-  if (provided !== secret) {
+  if (!safeTokenEqual(provided, secret)) {
     res.status(401).json({ error: 'unauthorized' });
     return;
   }
