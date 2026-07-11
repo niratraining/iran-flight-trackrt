@@ -79,9 +79,17 @@ app.get('/api/flights', async (req, res) => {
   try {
     const data = await getAllFlights();
     const body = JSON.stringify(data);
-    cacheSet('/api/flights', body, 86400);
+    // TTL این کش قبلاً ۸۶۴۰۰ ثانیه (۲۴ ساعت) بود، در حالی که دیتای زیرینش
+    // هر ۱۵ دقیقه عوض می‌شه. عمداً purge می‌شه بعد از هر رفرش، ولی اگه
+    // purge به هر دلیلی نگیره (یا لیارا چند instance بالا آورده باشه —
+    // نگاه کن به توضیح بالای cache.js — و purge روی instance دیگه‌ای
+    // خورده باشه)، بدون این تغییر دیتای قدیمی/تکراری تا ۲۴ ساعت سِرو
+    // می‌شد. الان TTL با فاصله‌ی رفرش خام (۱۵ دقیقه) هم‌خوانه، پس بدترین
+    // حالت هم خودش ظرف چند دقیقه درست می‌شه.
+    const FLIGHTS_CACHE_TTL_SECONDS = 15 * 60;
+    cacheSet('/api/flights', body, FLIGHTS_CACHE_TTL_SECONDS);
     res.set('content-type', 'application/json');
-    res.set('Cache-Control', 'public, max-age=86400');
+    res.set('Cache-Control', `public, max-age=${FLIGHTS_CACHE_TTL_SECONDS}`);
     res.send(body);
   } catch (err) {
     res.status(500).json({ error: 'failed to load flights', detail: String(err) });
