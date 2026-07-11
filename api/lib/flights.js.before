@@ -68,29 +68,11 @@ export const OTHER_AIRPORTS = ALL_AIRPORTS.filter(a => a.group === 'other').map(
 export const FIDS_COVERED_AIRPORTS = ALL_AIRPORTS
   .filter(a => Boolean(IATA_TO_FIDS_ID[a.iata]))
   .map(a => a.iata);
-const FIDS_COVERED_SET = new Set(FIDS_COVERED_AIRPORTS);
 
 const MIN_SAMPLE_SIZE = 5;
 const BUSY_ROUTE_THRESHOLD = 7;
 const BUSY_WINDOW_DAYS = 7;
 const QUIET_WINDOW_DAYS = 15;
-
-// آستانه‌ی صنعتی متعارف برای «به‌موقع» (مشابه FAA/DOT و اکثر پلتفرم‌های
-// on-time performance مثل FlightAware): تاخیرهای زیر ۱۵ دقیقه عملیاتاً
-// طبیعی‌ان و «تاخیر» محسوب نمی‌شن.
-const ON_TIME_GRACE_MINUTES = 15;
-
-// برای پروازهایی که مقصدشون هیچ‌وقت پوشش FIDS نداره (بین‌المللی یا
-// فرودگاه‌های بدون داده): تابلوی ورودی مقصد رو هیچ‌وقت نمی‌بینیم، پس
-// «پرواز کرد» (active) رو بعد از این‌قدر دقیقه از ساعت خروج برنامه‌ای
-// به‌عنوان «تکمیل‌شده» قطعی می‌گیریم؛ وگرنه این پروازها هرگز وارد آمار
-// نمی‌شن (به‌جز کنسلی‌ها).
-const DEPARTED_FALLBACK_BUFFER_MIN = 45;
-
-// رتبه‌بندی «کامل‌بودن» وضعیت — برای merge دو دیدِ جزئی از یک پرواز
-// فیزیکی (تابلوی خروجیِ مبدأ + تابلوی ورودیِ مقصد)، وضعیت نهایی باید
-// کامل‌ترینی باشه که تا الان دیدیم، نه صرفاً آخرین باری که آپدیت شد.
-const TERMINAL_RANK = { cancelled: 3, landed: 3, gate_closed: 2, checkin: 2, active: 2, delayed: 1, scheduled: 0, unknown: 0 };
 
 // ------------------------------------------------------------------
 // جمع‌آوری داده — فقط از FIDS (aviationstack کاملاً حذف شده)
@@ -106,42 +88,25 @@ async function fetchAllFlightsForAirport(airport) {
   return { data: [], calls_used: 0, key_used: null, source: 'none' };
 }
 
-// تعداد فرودگاهی که هم‌زمان fetch می‌شن (بخش ۱۱ گزارش فنی). اجرای کاملاً
-// ترتیبی روی ۳۷ فرودگاه، هرکدوم با تا ۱۰ ثانیه timeout روی fids-relay،
-// در بدترین حالت می‌تونه چند دقیقه طول بکشه. بالا بردن این عدد سرعت رو
-// زیاد می‌کنه ولی فشار بیشتری روی fids-relay/fids.airport.ir می‌ذاره؛
-// ۵ یک نقطه‌ی میانه‌ی معقوله (پیشنهاد گزارش فنی)، نه حداکثر ظرفیت شبکه.
-const AIRPORT_FETCH_CONCURRENCY = 5;
-
-async function trackSingleAirport(airport, now) {
-  try {
-    const { data, calls_used, key_used } = await fetchAllFlightsForAirport(airport);
-    const json = { data };
-
-    await kv.put(`${airport}_${now}`, JSON.stringify(json), { expirationTtl: 10 * 86400 });
-    await kv.put(`last_run:${airport}`, now);
-
-    const loggedCount = await logCompletedFlights(json, airport);
-
-    return { airport, status: 'ok', key_used, calls_used, logged: loggedCount };
-  } catch (err) {
-    await kv.put(`error_${airport}_${now}`, String(err));
-    return { airport, status: 'error', error: String(err) };
-  }
-}
-
 export async function trackAirports(airportCodes) {
   const now = new Date().toISOString();
   const results = [];
 
-  // دسته‌بندی به گروه‌های AIRPORT_FETCH_CONCURRENCY‌تایی: هر دسته موازی
-  // اجرا می‌شه، دسته‌ی بعدی منتظر تمام‌شدن دسته‌ی فعلی می‌مونه. این باعث
-  // می‌شه در آنِ واحد حداکثر AIRPORT_FETCH_CONCURRENCY درخواست هم‌زمان به
-  // relay بره، نه همه‌ی ۳۷ تا با هم (که می‌تونست relay رو تحت فشار بذاره).
-  for (let i = 0; i < airportCodes.length; i += AIRPORT_FETCH_CONCURRENCY) {
-    const batch = airportCodes.slice(i, i + AIRPORT_FETCH_CONCURRENCY);
-    const batchResults = await Promise.all(batch.map(airport => trackSingleAirport(airport, now)));
-    results.push(...batchResults);
+  for (const airport of airportCodes) {
+    try {
+      const { data, calls_used, key_used } = await fetchAllFlightsForAirport(airport);
+      const json = { data };
+
+      await kv.put(`${airport}_${now}`, JSON.stringify(json), { expirationTtl: 10 * 86400 });
+      await kv.put(`last_run:${airport}`, now);
+
+      const loggedCount = await logCompletedFlights(json, airport);
+
+      results.push({ airport, status: 'ok', key_used, calls_used, logged: loggedCount });
+    } catch (err) {
+      await kv.put(`error_${airport}_${now}`, String(err));
+      results.push({ airport, status: 'error', error: String(err) });
+    }
   }
 
   return results;
@@ -219,76 +184,20 @@ function tehranDateStr(d = new Date()) {
   return tehran.toISOString().slice(0, 10);
 }
 
+function flightDateFromScheduled(scheduled) {
+  if (!scheduled) return null;
+  return scheduled.slice(0, 10);
+}
+
 export { tehranDateStr };
-
-// تاریخ پرواز باید مستقل از این‌که رکورد از کدوم بورد اومده پایدار باشه:
-// اگه ساعت خروج واقعی رو داریم (رکورد از تابلوی خروجیِ مبدأ)، تاریخش
-// معیاره. وگرنه (رکورد از تابلوی ورودیِ مقصد، که فقط ساعت نشست رو می‌ده)
-// از تاریخ نشست استفاده می‌کنیم. برای پروازهای کوتاه‌بردِ داخلی ایران
-// (اکثریت قریب‌به‌اتفاق زیر ۲ ساعت) این دو تاریخ تقریباً همیشه یکی‌ان،
-// پس merge دو دیدِ جزئی درست جفت می‌شه؛ تنها استثنا پروازهای خیلی نزدیک
-// نیمه‌شب است که محدودیت شناخته‌شده‌ست، نه باگ.
-function stableFlightDate(depScheduled, arrScheduled) {
-  if (depScheduled) return depScheduled.slice(0, 10);
-  if (arrScheduled) return arrScheduled.slice(0, 10);
-  return tehranDateStr();
-}
-
-// کلید یکتای «یک پرواز فیزیکی» — عمداً بدون ساعت دقیق در کلید، چون
-// شماره‌پرواز + ایرلاین + تاریخ روی یک مسیر مشخص در عمل تقریباً همیشه
-// یکتاست. مهم‌تر از همه: این کلید مستقل از این‌که رکورد از تابلوی
-// خروجیِ مبدأ اومده یا تابلوی ورودیِ مقصد، برای هر دو یکسانه — پس دو
-// دیدِ جزئی از یک پرواز به یک سند واحد می‌رسن، نه دو سند جدا.
-function canonicalFlightKey(flightDate, route, airlineIata, flightIata) {
-  return `flight_log:${flightDate}:${route}:${airlineIata}:${flightIata}`;
-}
-
-// معیار تاخیر برای مسافر: اولویت با تاخیر نشست (arr_delay) چون تجربه‌ی
-// واقعی مسافره. dep_delay فقط وقتی به‌کار می‌ره که هیچ‌وقت تابلوی ورودیِ
-// مقصد رو نداشته باشیم (پروازهای بین‌المللی/مقصد بدون پوشش FIDS).
-// null یعنی «داده‌ی تاخیر نداریم»، نه صفر — نباید به‌عنوان on-time شمرده
-// بشه (باگ بحرانی #۱ دقیقاً همین اشتباه بود: dep_delay=null در رکوردهای
-// اومده از بورد ورودی به ۰ تبدیل می‌شد و همه چیز on-time به نظر می‌رسید).
-function resolveDelay(rec) {
-  if (typeof rec.arr_delay === 'number') return rec.arr_delay;
-  if (typeof rec.dep_delay === 'number') return rec.dep_delay;
-  return null;
-}
-
-// یک پرواز فیزیکی معمولاً دوبار دیده می‌شه (بورد خروجیِ مبدأ + بورد
-// ورودیِ مقصد). به‌جای overwrite کامل (که یکی از دو دید رو گم می‌کنه)،
-// این تابع رکورد جدید رو با هر رکورد موجودِ همون کلید یکتا merge می‌کنه:
-// فقط فیلدهای واقعاً پرشده رونویسی می‌شن (چیزی که در ورودی جدید خالیه،
-// مقدار موجود قبلی رو پاک نمی‌کنه)، و وضعیت نهایی «کامل‌ترین» وضعیتیه که
-// تا الان دیدیم (بر اساس TERMINAL_RANK)، نه صرفاً آخرین به‌روزرسانی.
-async function upsertFlightRecord(partial) {
-  const key = canonicalFlightKey(partial.flight_date, partial.route, partial.airline_iata, partial.flight_iata);
-
-  let existing = null;
-  const existingRaw = await kv.get(key);
-  if (existingRaw) {
-    try { existing = JSON.parse(existingRaw); } catch { existing = null; }
-  }
-
-  const merged = existing ? { ...existing } : {};
-  for (const [k, v] of Object.entries(partial)) {
-    if (v !== null && v !== undefined && v !== '') merged[k] = v;
-  }
-
-  const existingRank = existing ? (TERMINAL_RANK[existing.status] ?? 0) : -1;
-  const incomingRank = TERMINAL_RANK[partial.status] ?? 0;
-  if (incomingRank >= existingRank) merged.status = partial.status;
-
-  await kv.put(key, JSON.stringify(merged));
-  return key;
-}
 
 async function logCompletedFlights(json, depAirport) {
   const flights = json.data || [];
-  const ops = [];
+  const puts = [];
 
   for (const f of flights) {
     const status = f.flight_status;
+    if (status !== 'landed' && status !== 'cancelled') continue;
 
     const dep = f.departure || {};
     const arr = f.arrival || {};
@@ -301,21 +210,10 @@ async function logCompletedFlights(json, depAirport) {
     const arrIata = arr.iata || '';
     if (!flightIata || !arrIata) continue;
 
-    // «تکمیل‌شده» یعنی: نشست/کنسلی (همیشه) یا — برای مقصدهایی که هیچ‌وقت
-    // تابلوی ورودی نخواهیم دید (بین‌المللی/بدون پوشش) — «پرواز کرد» که
-    // به‌اندازه‌ی کافی از ساعت خروج برنامه‌ای گذشته باشه. بدون این حالت
-    // دوم، این پروازها هرگز وارد آمار نمی‌شدن (به‌جز کنسلی‌ها).
-    let effectivelyComplete = status === 'landed' || status === 'cancelled';
-    if (!effectivelyComplete && status === 'active' && !FIDS_COVERED_SET.has(arrIata)) {
-      const depTime = new Date(dep.scheduled || dep.actual || 0).getTime();
-      effectivelyComplete = depTime > 0 && (Date.now() - depTime) > DEPARTED_FALLBACK_BUFFER_MIN * 60000;
-    }
-    if (!effectivelyComplete) continue;
-
-    const date = stableFlightDate(dep.scheduled, arr.scheduled);
+    const date = flightDateFromScheduled(dep.scheduled) || tehranDateStr();
     const route = `${depIata}-${arrIata}`;
 
-    const partial = {
+    const record = {
       flight_date: date,
       route,
       dep_iata: depIata,
@@ -325,18 +223,19 @@ async function logCompletedFlights(json, depAirport) {
       flight_iata: flightIata,
       dep_scheduled: dep.scheduled || '',
       dep_actual: dep.actual || '',
-      dep_delay: typeof dep.delay === 'number' ? dep.delay : null,
+      dep_delay: dep.delay ?? null,
       arr_scheduled: arr.scheduled || '',
       arr_actual: arr.actual || '',
-      arr_delay: typeof arr.delay === 'number' ? arr.delay : null,
+      arr_delay: arr.delay ?? null,
       status
     };
 
-    ops.push(upsertFlightRecord(partial));
+    const key = `flight_log:${date}:${route}:${airlineIata}:${flightIata}:${dep.scheduled}`;
+    puts.push(kv.put(key, JSON.stringify(record)));
   }
 
-  await Promise.all(ops);
-  return ops.length;
+  await Promise.all(puts);
+  return puts.length;
 }
 
 export async function aggregateDailyStats(date) {
@@ -354,7 +253,7 @@ export async function aggregateDailyStats(date) {
 
       const groupKey = `${rec.route}:${rec.airline_iata}`;
       if (!grouped.has(groupKey)) {
-        grouped.set(groupKey, { total: 0, onTime: 0, delayed: 0, cancelled: 0, noTelemetry: 0, delaySum: 0, delaySamples: 0, airlineName: rec.airline_name || null });
+        grouped.set(groupKey, { total: 0, onTime: 0, delayed: 0, cancelled: 0, delaySum: 0, delaySamples: 0, airlineName: rec.airline_name || null });
       }
       const g = grouped.get(groupKey);
       g.total++;
@@ -365,21 +264,10 @@ export async function aggregateDailyStats(date) {
         continue;
       }
 
-      // باگ بحرانی سابق: اینجا فقط rec.dep_delay خونده می‌شد. برای پروازهایی
-      // که از تابلوی ورودیِ مقصد لاگ شدن (اکثر پروازهای داخلی، چون فقط
-      // نشست/فرود لاگ می‌شه)، dep_delay همیشه null بود؛ typeof null==='number'
-      // نتیجه‌ش false می‌شد، delay به ۰ سقوط می‌کرد و همه‌چیز به‌صورت خودکار
-      // on-time شمرده می‌شد. حالا resolveDelay اول arr_delay را می‌خواند
-      // (تجربه‌ی واقعی مسافر) و اگر هیچ داده‌ای نداشتیم null می‌ماند —
-      // نه on-time نه delayed، بلکه noTelemetry.
-      const delay = resolveDelay(rec);
-      if (delay === null) {
-        g.noTelemetry++;
-        continue;
-      }
+      const delay = typeof rec.dep_delay === 'number' ? rec.dep_delay : 0;
       g.delaySum += delay;
       g.delaySamples++;
-      if (delay <= ON_TIME_GRACE_MINUTES) g.onTime++;
+      if (delay <= 0) g.onTime++;
       else g.delayed++;
     }
     cursor = list.list_complete ? undefined : list.cursor;
@@ -397,18 +285,12 @@ export async function aggregateDailyStats(date) {
       on_time_count: g.onTime,
       delayed_count: g.delayed,
       cancelled_count: g.cancelled,
-      no_telemetry_count: g.noTelemetry,
       sum_delay_minutes: g.delaySum,
       delay_samples: g.delaySamples,
       avg_delay_minutes: g.delaySamples > 0 ? Math.round((g.delaySum / g.delaySamples) * 10) / 10 : 0,
       airline_name: g.airlineName
     };
-    // کلید با تاریخ در ابتدا (نه انتها) ذخیره می‌شه: `daily_stats:{date}:...`
-    // نه `daily_stats:{route}:{airline}:{date}`. این‌طوری خوانندگان (که
-    // معمولاً فقط چند روز اخیر رو لازم دارن: classifyRoutes ۷ روز،
-    // updateRollingScores حداکثر ۱۵ روز) می‌تونن با kv.list({gte, lt})
-    // فقط همون بازه رو از مونگو بخونن، نه کل تاریخچه‌ی پروژه.
-    puts.push(kv.put(`daily_stats:${date}:${route}:${airline}`, JSON.stringify(value)));
+    puts.push(kv.put(`daily_stats:${route}:${airline}:${date}`, JSON.stringify(value)));
 
     if (!byAirlineToday.has(airline)) byAirlineToday.set(airline, emptyLeaderboardAcc());
     const a = byAirlineToday.get(airline);
@@ -416,7 +298,6 @@ export async function aggregateDailyStats(date) {
     a.onTime += g.onTime;
     a.delayed += g.delayed;
     a.cancelled += g.cancelled;
-    a.noTelemetry += g.noTelemetry;
     a.delaySum += g.delaySum;
     a.delaySamples += g.delaySamples;
     if (g.airlineName) a.airlineName = g.airlineName;
@@ -430,27 +311,22 @@ export async function aggregateDailyStats(date) {
   return { count: grouped.size, byAirlineToday };
 }
 
-// مرز بالای بازه (exclusive) برای یک range query روزانه: «فردا» طبق تاریخ
-// تهران. چون کلیدها به‌صورت `prefix:{YYYY-MM-DD}:...` مرتب‌سازی رشته‌ای
-// می‌شن و تاریخ ISO لغوی هم‌راستا با ترتیب زمانیه، `[cutoffDate, tomorrow)`
-// دقیقاً همون چیزیه که «از cutoffDate تا امروز» رو می‌گیره.
-function tomorrowTehranDateStr() {
-  return tehranDateStr(new Date(Date.now() + 86400000));
-}
-
 export async function classifyRoutes() {
-  // به‌جای اسکن کل `daily_stats:*` و فیلتر در حافظه، مستقیماً فقط بازه‌ی
-  // ۷ روز اخیر رو با یک range query از مونگو می‌خونیم.
-  const cutoff = tehranDateStr(new Date(Date.now() - (BUSY_WINDOW_DAYS - 1) * 86400000));
-  const upperExclusive = tomorrowTehranDateStr();
+  const dates = new Set();
+  for (let i = 0; i < BUSY_WINDOW_DAYS; i++) {
+    dates.add(tehranDateStr(new Date(Date.now() - i * 86400000)));
+  }
 
   const routeTotals = new Map();
   let cursor;
   do {
-    const list = await kv.list({ gte: `daily_stats:${cutoff}`, lt: `daily_stats:${upperExclusive}`, cursor });
+    const list = await kv.list({ prefix: 'daily_stats:', cursor });
     for (const item of list.keys) {
       const parts = item.name.split(':');
-      const route = parts[2]; // daily_stats:{date}:{route}:{airline}
+      const date = parts[3];
+      if (!dates.has(date)) continue;
+
+      const route = parts[1];
       const raw = await kv.get(item.name);
       if (!raw) continue;
       const stats = JSON.parse(raw);
@@ -474,19 +350,6 @@ export async function classifyRoutes() {
   return routeTotals.size;
 }
 
-// حد پایین بازه‌ی اطمینان ۹۵٪ (Wilson score interval) برای نسبت on-time.
-// برخلاف بازه‌ی نرمال ساده، با n کوچک هم رفتار درست و غیرمنفی داره —
-// استاندارد رایج برای نمایش «نرخ موفقیت با نمونه‌ی کم» (مثلاً امتیاز
-// فروشنده در پلتفرم‌های ecommerce).
-function wilsonLowerBound(onTime, n, z = 1.96) {
-  if (!n) return null;
-  const p = onTime / n;
-  const denom = 1 + (z * z) / n;
-  const centre = p + (z * z) / (2 * n);
-  const margin = z * Math.sqrt((p * (1 - p) + (z * z) / (4 * n)) / n);
-  return Math.round(Math.max(0, (centre - margin) / denom) * 1000) / 10;
-}
-
 export async function updateRollingScores() {
   const routeWindowCache = new Map();
   async function getRouteWindowDays(route) {
@@ -497,20 +360,16 @@ export async function updateRollingScores() {
     return windowDays;
   }
 
-  // QUIET_WINDOW_DAYS (۱۵ روز) بزرگ‌ترین پنجره‌ی ممکنه — پنجره‌ی واقعی هر
-  // مسیر (۷ یا ۱۵ روزه، بر اساس route_class) پایین‌تر با getRouteWindowDays
-  // اعمال می‌شه. اینجا فقط یک بار، با یک range query، سقفِ بازه‌ی لازم رو
-  // از مونگو می‌خونیم؛ نه کل تاریخچه‌ی `daily_stats:*` رو.
   const cutoff = tehranDateStr(new Date(Date.now() - (QUIET_WINDOW_DAYS - 1) * 86400000));
-  const upperExclusive = tomorrowTehranDateStr();
   const pairs = new Map();
 
   let cursor;
   do {
-    const list = await kv.list({ gte: `daily_stats:${cutoff}`, lt: `daily_stats:${upperExclusive}`, cursor });
+    const list = await kv.list({ prefix: 'daily_stats:', cursor });
     for (const item of list.keys) {
       const parts = item.name.split(':');
-      const date = parts[1], route = parts[2], airline = parts[3]; // daily_stats:{date}:{route}:{airline}
+      const route = parts[1], airline = parts[2], date = parts[3];
+      if (date < cutoff) continue;
       const pairKey = `${route}:${airline}`;
       if (!pairs.has(pairKey)) pairs.set(pairKey, []);
       pairs.get(pairKey).push(item.name);
@@ -527,9 +386,9 @@ export async function updateRollingScores() {
     const windowDays = await getRouteWindowDays(route);
     const windowCutoff = tehranDateStr(new Date(Date.now() - (windowDays - 1) * 86400000));
 
-    let total = 0, onTime = 0, delayed = 0, cancelled = 0, noTelemetry = 0, delaySum = 0, delaySamples = 0, airlineName = null;
+    let total = 0, onTime = 0, delayed = 0, cancelled = 0, delaySum = 0, delaySamples = 0, airlineName = null;
     for (const dailyKey of dailyKeys) {
-      const date = dailyKey.split(':')[1]; // daily_stats:{date}:{route}:{airline}
+      const date = dailyKey.split(':')[3];
       if (date < windowCutoff) continue;
       const raw = await kv.get(dailyKey);
       if (!raw) continue;
@@ -538,7 +397,6 @@ export async function updateRollingScores() {
       onTime += s.on_time_count;
       delayed += s.delayed_count;
       cancelled += s.cancelled_count;
-      noTelemetry += (s.no_telemetry_count || 0);
       delaySum += s.sum_delay_minutes;
       delaySamples += s.delay_samples;
       if (s.airline_name) airlineName = s.airline_name;
@@ -550,12 +408,6 @@ export async function updateRollingScores() {
       insufficient_data: total < MIN_SAMPLE_SIZE,
       reason: total < MIN_SAMPLE_SIZE ? `فقط ${total} پرواز در ${windowDays} روز اخیر ثبت شده` : null,
       score_percent: (total >= MIN_SAMPLE_SIZE && completed > 0) ? Math.round((onTime / completed) * 1000) / 10 : null,
-      // بازه‌ی اطمینان آماری (حد پایین Wilson score): با نمونه‌ی کم، یک عدد
-      // قطعی مثل «۸۰٪» گمراه‌کننده‌ست (می‌تونه از ۴ پرواز از ۵ باشه). این
-      // عدد «حداقل اعتمادپذیری قابل‌دفاع آماری» رو نشون می‌ده و خودش با
-      // نمونه‌ی کم پایین می‌افته، بدون این‌که مجبور باشیم مسیر رو کلاً
-      // بی‌عدد نشون بدیم.
-      confidence_low_percent: completed > 0 ? wilsonLowerBound(onTime, completed) : null,
       all_cancelled: completed === 0,
       avg_delay_minutes: delaySamples > 0 ? Math.round((delaySum / delaySamples) * 10) / 10 : 0,
       cancellation_rate: total > 0 ? Math.round((cancelled / total) * 1000) / 10 : 0,
@@ -564,7 +416,6 @@ export async function updateRollingScores() {
       on_time_count: onTime,
       delayed_count: delayed,
       cancelled_count: cancelled,
-      no_telemetry_count: noTelemetry,
       delay_sum_minutes: delaySum,
       delay_samples: delaySamples,
       window_days: windowDays,
@@ -610,7 +461,7 @@ export async function getReliabilityForRoute(route) {
 }
 
 function emptyLeaderboardAcc() {
-  return { total: 0, onTime: 0, delayed: 0, cancelled: 0, noTelemetry: 0, delaySum: 0, delaySamples: 0, airlineName: null, routes: {} };
+  return { total: 0, onTime: 0, delayed: 0, cancelled: 0, delaySum: 0, delaySamples: 0, airlineName: null, routes: {} };
 }
 
 function addLeaderboardAcc(dst, src) {
@@ -618,7 +469,6 @@ function addLeaderboardAcc(dst, src) {
   dst.onTime += src.onTime;
   dst.delayed += src.delayed;
   dst.cancelled += src.cancelled;
-  dst.noTelemetry += (src.noTelemetry || 0);
   dst.delaySum += src.delaySum;
   dst.delaySamples += src.delaySamples;
   if (src.airlineName) dst.airlineName = src.airlineName;
@@ -645,7 +495,7 @@ async function buildLeaderboardAccumulatorFromFullHistory() {
       try { s = JSON.parse(raw); } catch { continue; }
 
       const parts = item.name.split(':');
-      const route = parts[2], airline = parts[3]; // daily_stats:{date}:{route}:{airline}
+      const route = parts[1], airline = parts[2];
 
       if (!baked[airline]) baked[airline] = emptyLeaderboardAcc();
       const a = baked[airline];
@@ -655,7 +505,6 @@ async function buildLeaderboardAccumulatorFromFullHistory() {
       a.cancelled += s.cancelled_count;
       a.delaySum += s.sum_delay_minutes;
       a.delaySamples += s.delay_samples;
-      a.noTelemetry += (s.no_telemetry_count || 0); // اسناد قدیمی این فیلد را ندارند
       if (s.airline_name) a.airlineName = s.airline_name;
 
       if (!a.routes[route]) a.routes[route] = { total: 0, onTime: 0, cancelled: 0 };
@@ -726,7 +575,6 @@ export async function updateLeaderboardStats(date, todayByAirline) {
       avg_delay_minutes: a.delaySamples > 0 ? Math.round((a.delaySum / a.delaySamples) * 10) / 10 : 0,
       cancellation_rate: a.total > 0 ? Math.round((a.cancelled / a.total) * 1000) / 10 : 0,
       delayed_count: a.delayed,
-      no_telemetry_count: a.noTelemetry,
       routes
     });
   }

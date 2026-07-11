@@ -106,42 +106,25 @@ async function fetchAllFlightsForAirport(airport) {
   return { data: [], calls_used: 0, key_used: null, source: 'none' };
 }
 
-// تعداد فرودگاهی که هم‌زمان fetch می‌شن (بخش ۱۱ گزارش فنی). اجرای کاملاً
-// ترتیبی روی ۳۷ فرودگاه، هرکدوم با تا ۱۰ ثانیه timeout روی fids-relay،
-// در بدترین حالت می‌تونه چند دقیقه طول بکشه. بالا بردن این عدد سرعت رو
-// زیاد می‌کنه ولی فشار بیشتری روی fids-relay/fids.airport.ir می‌ذاره؛
-// ۵ یک نقطه‌ی میانه‌ی معقوله (پیشنهاد گزارش فنی)، نه حداکثر ظرفیت شبکه.
-const AIRPORT_FETCH_CONCURRENCY = 5;
-
-async function trackSingleAirport(airport, now) {
-  try {
-    const { data, calls_used, key_used } = await fetchAllFlightsForAirport(airport);
-    const json = { data };
-
-    await kv.put(`${airport}_${now}`, JSON.stringify(json), { expirationTtl: 10 * 86400 });
-    await kv.put(`last_run:${airport}`, now);
-
-    const loggedCount = await logCompletedFlights(json, airport);
-
-    return { airport, status: 'ok', key_used, calls_used, logged: loggedCount };
-  } catch (err) {
-    await kv.put(`error_${airport}_${now}`, String(err));
-    return { airport, status: 'error', error: String(err) };
-  }
-}
-
 export async function trackAirports(airportCodes) {
   const now = new Date().toISOString();
   const results = [];
 
-  // دسته‌بندی به گروه‌های AIRPORT_FETCH_CONCURRENCY‌تایی: هر دسته موازی
-  // اجرا می‌شه، دسته‌ی بعدی منتظر تمام‌شدن دسته‌ی فعلی می‌مونه. این باعث
-  // می‌شه در آنِ واحد حداکثر AIRPORT_FETCH_CONCURRENCY درخواست هم‌زمان به
-  // relay بره، نه همه‌ی ۳۷ تا با هم (که می‌تونست relay رو تحت فشار بذاره).
-  for (let i = 0; i < airportCodes.length; i += AIRPORT_FETCH_CONCURRENCY) {
-    const batch = airportCodes.slice(i, i + AIRPORT_FETCH_CONCURRENCY);
-    const batchResults = await Promise.all(batch.map(airport => trackSingleAirport(airport, now)));
-    results.push(...batchResults);
+  for (const airport of airportCodes) {
+    try {
+      const { data, calls_used, key_used } = await fetchAllFlightsForAirport(airport);
+      const json = { data };
+
+      await kv.put(`${airport}_${now}`, JSON.stringify(json), { expirationTtl: 10 * 86400 });
+      await kv.put(`last_run:${airport}`, now);
+
+      const loggedCount = await logCompletedFlights(json, airport);
+
+      results.push({ airport, status: 'ok', key_used, calls_used, logged: loggedCount });
+    } catch (err) {
+      await kv.put(`error_${airport}_${now}`, String(err));
+      results.push({ airport, status: 'error', error: String(err) });
+    }
   }
 
   return results;
@@ -403,12 +386,7 @@ export async function aggregateDailyStats(date) {
       avg_delay_minutes: g.delaySamples > 0 ? Math.round((g.delaySum / g.delaySamples) * 10) / 10 : 0,
       airline_name: g.airlineName
     };
-    // کلید با تاریخ در ابتدا (نه انتها) ذخیره می‌شه: `daily_stats:{date}:...`
-    // نه `daily_stats:{route}:{airline}:{date}`. این‌طوری خوانندگان (که
-    // معمولاً فقط چند روز اخیر رو لازم دارن: classifyRoutes ۷ روز،
-    // updateRollingScores حداکثر ۱۵ روز) می‌تونن با kv.list({gte, lt})
-    // فقط همون بازه رو از مونگو بخونن، نه کل تاریخچه‌ی پروژه.
-    puts.push(kv.put(`daily_stats:${date}:${route}:${airline}`, JSON.stringify(value)));
+    puts.push(kv.put(`daily_stats:${route}:${airline}:${date}`, JSON.stringify(value)));
 
     if (!byAirlineToday.has(airline)) byAirlineToday.set(airline, emptyLeaderboardAcc());
     const a = byAirlineToday.get(airline);
@@ -430,27 +408,22 @@ export async function aggregateDailyStats(date) {
   return { count: grouped.size, byAirlineToday };
 }
 
-// مرز بالای بازه (exclusive) برای یک range query روزانه: «فردا» طبق تاریخ
-// تهران. چون کلیدها به‌صورت `prefix:{YYYY-MM-DD}:...` مرتب‌سازی رشته‌ای
-// می‌شن و تاریخ ISO لغوی هم‌راستا با ترتیب زمانیه، `[cutoffDate, tomorrow)`
-// دقیقاً همون چیزیه که «از cutoffDate تا امروز» رو می‌گیره.
-function tomorrowTehranDateStr() {
-  return tehranDateStr(new Date(Date.now() + 86400000));
-}
-
 export async function classifyRoutes() {
-  // به‌جای اسکن کل `daily_stats:*` و فیلتر در حافظه، مستقیماً فقط بازه‌ی
-  // ۷ روز اخیر رو با یک range query از مونگو می‌خونیم.
-  const cutoff = tehranDateStr(new Date(Date.now() - (BUSY_WINDOW_DAYS - 1) * 86400000));
-  const upperExclusive = tomorrowTehranDateStr();
+  const dates = new Set();
+  for (let i = 0; i < BUSY_WINDOW_DAYS; i++) {
+    dates.add(tehranDateStr(new Date(Date.now() - i * 86400000)));
+  }
 
   const routeTotals = new Map();
   let cursor;
   do {
-    const list = await kv.list({ gte: `daily_stats:${cutoff}`, lt: `daily_stats:${upperExclusive}`, cursor });
+    const list = await kv.list({ prefix: 'daily_stats:', cursor });
     for (const item of list.keys) {
       const parts = item.name.split(':');
-      const route = parts[2]; // daily_stats:{date}:{route}:{airline}
+      const date = parts[3];
+      if (!dates.has(date)) continue;
+
+      const route = parts[1];
       const raw = await kv.get(item.name);
       if (!raw) continue;
       const stats = JSON.parse(raw);
@@ -497,20 +470,16 @@ export async function updateRollingScores() {
     return windowDays;
   }
 
-  // QUIET_WINDOW_DAYS (۱۵ روز) بزرگ‌ترین پنجره‌ی ممکنه — پنجره‌ی واقعی هر
-  // مسیر (۷ یا ۱۵ روزه، بر اساس route_class) پایین‌تر با getRouteWindowDays
-  // اعمال می‌شه. اینجا فقط یک بار، با یک range query، سقفِ بازه‌ی لازم رو
-  // از مونگو می‌خونیم؛ نه کل تاریخچه‌ی `daily_stats:*` رو.
   const cutoff = tehranDateStr(new Date(Date.now() - (QUIET_WINDOW_DAYS - 1) * 86400000));
-  const upperExclusive = tomorrowTehranDateStr();
   const pairs = new Map();
 
   let cursor;
   do {
-    const list = await kv.list({ gte: `daily_stats:${cutoff}`, lt: `daily_stats:${upperExclusive}`, cursor });
+    const list = await kv.list({ prefix: 'daily_stats:', cursor });
     for (const item of list.keys) {
       const parts = item.name.split(':');
-      const date = parts[1], route = parts[2], airline = parts[3]; // daily_stats:{date}:{route}:{airline}
+      const route = parts[1], airline = parts[2], date = parts[3];
+      if (date < cutoff) continue;
       const pairKey = `${route}:${airline}`;
       if (!pairs.has(pairKey)) pairs.set(pairKey, []);
       pairs.get(pairKey).push(item.name);
@@ -529,7 +498,7 @@ export async function updateRollingScores() {
 
     let total = 0, onTime = 0, delayed = 0, cancelled = 0, noTelemetry = 0, delaySum = 0, delaySamples = 0, airlineName = null;
     for (const dailyKey of dailyKeys) {
-      const date = dailyKey.split(':')[1]; // daily_stats:{date}:{route}:{airline}
+      const date = dailyKey.split(':')[3];
       if (date < windowCutoff) continue;
       const raw = await kv.get(dailyKey);
       if (!raw) continue;
@@ -645,7 +614,7 @@ async function buildLeaderboardAccumulatorFromFullHistory() {
       try { s = JSON.parse(raw); } catch { continue; }
 
       const parts = item.name.split(':');
-      const route = parts[2], airline = parts[3]; // daily_stats:{date}:{route}:{airline}
+      const route = parts[1], airline = parts[2];
 
       if (!baked[airline]) baked[airline] = emptyLeaderboardAcc();
       const a = baked[airline];

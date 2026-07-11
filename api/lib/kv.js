@@ -57,8 +57,23 @@ export const kv = {
   // کلودفلر نیازی به صفحه‌بندی واقعی نیست — همیشه list_complete:true و
   // cursor:undefined برمی‌گردونه، و کدهای فراخوان (که با
   // do { ... } while(cursor) نوشته شدن) بدون تغییر کار می‌کنن.
-  async list({ prefix = '', cursor } = {}) {
-    const query = prefix ? { _id: { $gte: prefix, $lt: prefix + '\uffff' } } : {};
+  //
+  // gte/lt (اختیاری): برای کلیدهایی که با یک بخش قابل‌مرتب‌سازی (مثل
+  // تاریخ ISO) شروع می‌شن، امکان یک range query واقعی روی _id می‌ده —
+  // نه فقط تطبیق prefix ثابت. وقتی داده شن، جایگزین prefix می‌شن (نه
+  // ترکیب باهاش)، چون خودشون از قبل بازه‌ی کامل رو مشخص می‌کنن.
+  // مثال: kv.list({ gte: 'daily_stats:2026-06-26', lt: 'daily_stats:2026-07-11' })
+  // فقط اسنادی با تاریخ در این بازه رو می‌گیره، بدون خوندن کل کالکشن.
+  async list({ prefix = '', cursor, gte, lt } = {}) {
+    let query;
+    if (gte !== undefined || lt !== undefined) {
+      const range = {};
+      if (gte !== undefined) range.$gte = gte;
+      if (lt !== undefined) range.$lt = lt;
+      query = { _id: range };
+    } else {
+      query = prefix ? { _id: { $gte: prefix, $lt: prefix + '\uffff' } } : {};
+    }
     const docs = await col.find(query).project({ _id: 1 }).toArray();
     return {
       keys: docs.map(d => ({ name: d._id })),

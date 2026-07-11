@@ -6,6 +6,7 @@
 
 import { kv } from './kv.js';
 import { ALL_AIRPORTS } from './flights.js';
+import { safeTokenEqual } from './security.js';
 
 export async function handleAdmin(req, res) {
   const secret = process.env.REFRESH_SECRET;
@@ -17,7 +18,7 @@ export async function handleAdmin(req, res) {
 
   const token = req.query.token || '';
 
-  if (token !== secret) {
+  if (!safeTokenEqual(token, secret)) {
     res.set('content-type', 'text/html; charset=utf-8');
     res.send(renderLoginPage());
     return;
