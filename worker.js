@@ -1,3 +1,5 @@
+import { fetchAirportViaFids, IATA_TO_FIDS_ID } from './fids-scraper.js';
+
 // ==================================================================
 // Phase 2 — 20 airports + API key pool + admin panel
 // ==================================================================
@@ -351,7 +353,7 @@ async function incrementKeyUsage(env, index) {
 const AVIATIONSTACK_PAGE_SIZE = 100;
 const MAX_PAGES_PER_AIRPORT = 5; // cap: 500 flights/airport/day
 
-async function fetchAllFlightsForAirport(env, airport) {
+async function fetchAllFlightsForAirportAviationstack(env, airport) {
   let offset = 0;
   let combined = [];
   let callsUsed = 0;
@@ -384,6 +386,23 @@ async function fetchAllFlightsForAirport(env, airport) {
   }
 
   return { data: combined, calls_used: callsUsed, key_used: lastKeyIndex };
+}
+
+// نقطه‌ی ورودی جدید: اول FIDS رایگان رو امتحان می‌کنه (برای فرودگاه‌هایی که
+// fids.airport.ir پوشش می‌ده — یعنی IATA_TO_FIDS_ID داره)، و فقط برای بقیه
+// (فعلاً IKA / KIH / ZBR) یا در صورت خطای FIDS، به aviationstack برمی‌گرده.
+async function fetchAllFlightsForAirport(env, airport) {
+  if (IATA_TO_FIDS_ID[airport]) {
+    try {
+      const json = await fetchAirportViaFids(airport);
+      return { data: json.data, calls_used: 0, key_used: null, source: 'fids' };
+    } catch (err) {
+      console.log(`FIDS failed for ${airport}, falling back to aviationstack: ${err}`);
+      // ادامه می‌ره سراغ aviationstack پایین
+    }
+  }
+  const result = await fetchAllFlightsForAirportAviationstack(env, airport);
+  return { ...result, source: 'aviationstack' };
 }
 
 async function trackAirports(env, airportCodes) {
