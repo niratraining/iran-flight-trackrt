@@ -210,9 +210,12 @@ const STATUS_MAP = [
   [/دریافت بار|نقاله/, 'landed'],
   [/دریافت کارت پرواز|پذیرش/, 'checkin'],
   [/پایان پذیرش/, 'gate_closed'],
-  [/طبق برنامه|به موقع/, 'scheduled'],
+  [/طبق برنامه|به موقع|به‌موقع/, 'scheduled'],
   [/منتظر اعلام|در حال بررسی/, 'scheduled'],
-  [/پرواز کرد|اقلاع کرد|برخاست/, 'active'],
+  // «پرواز کرد» ممکنه با یا بدون فاصله بیاد (روی fids.airport.ir معمولاً
+  // بدون فاصله چسبیده‌ست: «پروازکرد»). قبلاً \s الزامی نبود پس این حالت
+  // اصلاً match نمی‌شد و همه‌ی پروازهای پرواز‌کرده 'unknown' می‌موندن.
+  [/پرواز\s*کرد|اقلاع\s*کرد|برخاست/, 'active'],
 ];
 
 function mapStatus(raw) {
@@ -226,23 +229,60 @@ function mapStatus(raw) {
 
 const TEHRAN_OFFSET_MS = 3.5 * 3600 * 1000; // UTC+3:30 — ایران DST نداره، این آفست ثابته
 
-function toIsoDateTime(dateStr, timeStr) {
+// نگاشت اسم فارسی روز هفته -> Date.getUTCDay() (۰=یکشنبه ... ۶=شنبه)
+const FA_WEEKDAY_TO_JS_DAY = {
+  'یکشنبه': 0, 'دوشنبه': 1, 'سه‌شنبه': 2, 'سه شنبه': 2,
+  'چهارشنبه': 3, 'پنجشنبه': 4, 'جمعه': 5, 'شنبه': 6,
+};
+
+// fids.airport.ir یک پنجره‌ی چندروزه (دیروز/امروز/فردا/...) رو با هم
+// نشون می‌ده، نه فقط امروز. قبلاً روز هفته‌ی اسکرپ‌شده (weekday) کلاً
+// دور ریخته می‌شد و همه‌ی ردیف‌ها با تاریخ «امروزِ سرور» ثبت می‌شدن —
+// همین باعث می‌شد پروازهای یکشنبه/دوشنبه و... هم زیر تاریخ شنبه بیفتن
+// و برای یک شماره پرواز چند ساعت متفاوت و متناقض ثبت بشه.
+// اینجا نزدیک‌ترین روز تقویمی (بین ۳ روز قبل تا ۳ روز بعد از امروزِ
+// تهران) که با weekdayFa می‌خونه رو پیدا می‌کنیم.
+function resolveTehranDateParts(weekdayFa) {
+  const nowTehran = new Date(Date.now() + TEHRAN_OFFSET_MS);
+  const todayMidnight = Date.UTC(nowTehran.getUTCFullYear(), nowTehran.getUTCMonth(), nowTehran.getUTCDate());
+
+  const targetJsDay = weekdayFa ? FA_WEEKDAY_TO_JS_DAY[weekdayFa.trim()] : undefined;
+  if (targetJsDay === undefined) {
+    const t = new Date(todayMidnight);
+    return { y: t.getUTCFullYear(), m: t.getUTCMonth(), d: t.getUTCDate() };
+  }
+
+  let bestOffset = 0;
+  let bestDiff = Infinity;
+  for (let offset = -3; offset <= 3; offset++) {
+    const candidate = new Date(todayMidnight + offset * 86400000);
+    if (candidate.getUTCDay() === targetJsDay && Math.abs(offset) < bestDiff) {
+      bestDiff = Math.abs(offset);
+      bestOffset = offset;
+    }
+  }
+  const chosen = new Date(todayMidnight + bestOffset * 86400000);
+  return { y: chosen.getUTCFullYear(), m: chosen.getUTCMonth(), d: chosen.getUTCDate() };
+}
+
+function isoFromDateParts(y, m, d, timeStr) {
   if (!timeStr) return '';
   const [hh, mm] = timeStr.split(':').map(n => parseInt(n, 10));
-
-  // «امروز» باید بر اساس روز تقویمی تهران محاسبه بشه، نه ساعت سرور
-  // (که می‌تونه UTC باشه و نزدیک نیمه‌شب یک روز عقب/جلو بیفته).
-  const nowTehran = new Date(Date.now() + TEHRAN_OFFSET_MS);
-  const y = nowTehran.getUTCFullYear();
-  const m = nowTehran.getUTCMonth();
-  const day = nowTehran.getUTCDate();
-
-  // hh:mm روی fids.airport.ir ساعتِ محلیِ تهران‌ه، نه UTC.
-  // برای گرفتن UTC واقعی باید ۳:۳۰ ساعت کم بشه (قبلاً این کم‌کردن انجام
-  // نمی‌شد و همون چیزی بود که باعث می‌شد وقتی کلاینت دوباره تبدیل به وقت
-  // محلی می‌کرد، ساعت‌ها ۳:۳۰ جلوتر از واقعیت نمایش داده بشن).
-  const utcMillis = Date.UTC(y, m, day, hh, mm) - TEHRAN_OFFSET_MS;
+  // hh:mm روی fids.airport.ir ساعتِ محلیِ تهران‌ه، نه UTC؛ برای UTC واقعی
+  // باید ۳:۳۰ ساعت کم بشه.
+  const utcMillis = Date.UTC(y, m, d, hh, mm) - TEHRAN_OFFSET_MS;
   return new Date(utcMillis).toISOString();
+}
+
+// تاخیر واقعی رو از فاصله‌ی «ساعت واقعی» تا «ساعت برنامه‌ای» حساب می‌کنیم.
+// قبلاً این مقدار همیشه null بود، پس دیگه هیچ پروازی توی داشبورد
+// 'delayed' حساب نمی‌شد و همه (جز لغوشده‌ها) پیش‌فرض «به‌موقع» می‌افتادن.
+function computeDelayMinutes(scheduledIso, actualIso) {
+  if (!scheduledIso || !actualIso) return null;
+  const sched = new Date(scheduledIso).getTime();
+  const act = new Date(actualIso).getTime();
+  if (isNaN(sched) || isNaN(act)) return null;
+  return Math.round((act - sched) / 60000);
 }
 
 export function fidsToAviationstackShape(fidsData, myIata) {
@@ -258,16 +298,18 @@ export function fidsToAviationstackShape(fidsData, myIata) {
     const isArrival = cat.startsWith('arrivals');
     for (const row of fidsData[cat] || []) {
       const otherIata = cityToCode(row.city);
-      const scheduledIso = toIsoDateTime(row.date, row.scheduled_time);
+      const { y, m, d } = resolveTehranDateParts(row.weekday);
+      const scheduledIso = isoFromDateParts(y, m, d, row.scheduled_time);
       const actualIso = row.actual_time && /\d{1,2}:\d{2}/.test(row.actual_time)
-        ? toIsoDateTime(row.date, row.actual_time.match(/\d{1,2}:\d{2}/)[0])
+        ? isoFromDateParts(y, m, d, row.actual_time.match(/\d{1,2}:\d{2}/)[0])
         : '';
+      const delayMinutes = computeDelayMinutes(scheduledIso, actualIso);
 
       const dep = isArrival
         ? { iata: otherIata, scheduled: scheduledIso, estimated: '', actual: actualIso, delay: null }
-        : { iata: myIata, scheduled: scheduledIso, estimated: '', actual: actualIso, delay: null };
+        : { iata: myIata, scheduled: scheduledIso, estimated: '', actual: actualIso, delay: delayMinutes };
       const arr = isArrival
-        ? { iata: myIata, scheduled: scheduledIso, estimated: '', actual: actualIso, delay: null }
+        ? { iata: myIata, scheduled: scheduledIso, estimated: '', actual: actualIso, delay: delayMinutes }
         : { iata: otherIata, scheduled: scheduledIso, estimated: '', actual: actualIso, delay: null };
 
       out.push({
