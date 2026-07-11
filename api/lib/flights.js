@@ -31,7 +31,30 @@ export const ALL_AIRPORTS = [
   { iata: 'ABD', name: 'آبادان', group: 'other' },
   { iata: 'BUZ', name: 'بوشهر', group: 'other' },
   { iata: 'ADU', name: 'اردبیل', group: 'other' },
-  { iata: 'ZBR', name: 'چابهار', group: 'other' }
+  { iata: 'ZBR', name: 'چابهار', group: 'other' },
+  // ۷ فرودگاه تازه — پوشش FIDS تأیید شده (داده‌ی زنده دارن):
+  { iata: 'GBT', name: 'گرگان', group: 'other' },
+  { iata: 'HDM', name: 'همدان', group: 'other' },
+  { iata: 'SDG', name: 'سنندج', group: 'other' },
+  { iata: 'XBJ', name: 'بیرجند', group: 'other' },
+  { iata: 'JWN', name: 'زنجان', group: 'other' },
+  { iata: 'LRR', name: 'لارستان', group: 'other' },
+  { iata: 'KHD', name: 'خرم‌آباد', group: 'other' },
+  // این‌ها توی لیست فرودگاه‌ها هستن، ولی چون آی‌دی دقیق fids.airport.ir
+  // براشون هنوز تأیید نشده، فعلاً بدون داده می‌مونن (مثل IKA/KIH/ZBR) —
+  // حدس زدن آی‌دی غلط ریسکش نشون‌دادن داده‌ی یه فرودگاه دیگه زیر این
+  // اسمه، که بدتر از بدون‌داده بودنه.
+  { iata: 'BJB', name: 'بجنورد', group: 'other' },
+  { iata: 'IIL', name: 'ایلام', group: 'other' },
+  { iata: 'PFQ', name: 'پارس‌آباد مغان', group: 'other' },
+  { iata: 'SMN', name: 'سمنان', group: 'other' },
+  { iata: 'RUD', name: 'شاهرود', group: 'other' },
+  { iata: 'NSH', name: 'نوشهر', group: 'other' },
+  { iata: 'YES', name: 'یاسوج', group: 'other' },
+  { iata: 'CQD', name: 'شهرکرد', group: 'other' },
+  { iata: 'AJK', name: 'اراک', group: 'other' },
+  { iata: 'ACZ', name: 'زابل', group: 'other' },
+  { iata: 'LFM', name: 'لامرد', group: 'other' }
 ];
 
 export const MAIN_AIRPORTS = ALL_AIRPORTS.filter(a => a.group === 'main').map(a => a.iata);
