@@ -14,7 +14,7 @@ export const FIDS_BASE_URL = 'https://fids.airport.ir';
 
 // آدرس اپ لیارای شما بعد از دیپلوی (چیزی شبیه https://fids-relay.iran.liara.run).
 // این رو بعد از ساخت اپ روی لیارا با آدرس واقعیش جایگزین کن.
-export const RELAY_BASE_URL = 'https://fids-relay.iran.liara.run';
+export const RELAY_BASE_URL = 'https://fids-relay.liara.run';
 
 // شناسه fids -> (اسلاگ آدرس, نام نمایشی). مستقیم از fids_scraper.py کپی شده.
 export const FIDS_AIRPORTS = {
