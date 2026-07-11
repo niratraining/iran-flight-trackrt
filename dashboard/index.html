@@ -2252,6 +2252,11 @@ async function loadData(){
 }
 
 loadData();
+
+// هر ۳۰ دقیقه یک‌بار خودکار دوباره از API بگیر و اگه updated_at عوض شده
+// بود صفحه رو به‌روز کن (loadData خودش این چک رو انجام می‌ده، پس صفحه
+// فلیکر نمی‌خوره اگه داده‌ی جدیدی نباشه).
+setInterval(loadData, 30 * 60 * 1000);
 </script>
 </body>
 </html>
