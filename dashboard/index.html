@@ -1266,9 +1266,13 @@ function classify(f){
   return delay > 0 ? 'delayed' : 'on-time';
 }
 function delayOf(f){ return typeof f.dep_delay === 'number' ? f.dep_delay : 0; }
-function fmtDate(iso){ if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleDateString('fa-IR'); }
-function fmtTime(iso){ if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleTimeString('fa-IR', { hour:'2-digit', minute:'2-digit' }); }
-function fmtWeekday(iso){ if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? '—' : WEEKDAYS_FA[d.getDay()]; }
+// همیشه با timeZone صریح 'Asia/Tehran' نمایش بده — وگرنه اگه کاربر از
+// خارج ایران یا با تایم‌زون دیگه‌ای باز کنه، ساعت نمایشی اشتباه می‌شه
+// چون بدون این گزینه، مرورگر از تایم‌زون خودِ دستگاه استفاده می‌کنه.
+const TEHRAN_TZ = 'Asia/Tehran';
+function fmtDate(iso){ if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleDateString('fa-IR', { timeZone: TEHRAN_TZ }); }
+function fmtTime(iso){ if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleTimeString('fa-IR', { hour:'2-digit', minute:'2-digit', timeZone: TEHRAN_TZ }); }
+function fmtWeekday(iso){ if (!iso) return '—'; const d = new Date(iso); if (isNaN(d)) return '—'; const parts = new Intl.DateTimeFormat('en-US', { timeZone: TEHRAN_TZ, weekday: 'long' }).format(d); const map = { Sunday:0, Monday:1, Tuesday:2, Wednesday:3, Thursday:4, Friday:5, Saturday:6 }; return WEEKDAYS_FA[map[parts]]; }
 function toFa(n){ return Number(n).toLocaleString('fa-IR'); }
 // هر جا تعداد «پرواز رصدشده» نشون داده می‌شه، این تابع عدد «چندتاش تاخیر
 // داشته» رو هم به‌صورت یک پسوند کوتاه برمی‌گردونه تا کنار همون برچسب بشینه.
