@@ -27,14 +27,24 @@ app.get('/proxy', async (req, res) => {
     return;
   }
 
+  // بدون timeout صریح، اگه fids.airport.ir کند/بی‌جواب باشه، این fetch
+  // معلق می‌مونه تا لایه‌ی Cloudflare جلوی لیارا خودش بعد از ~۲۵-۳۰ ثانیه
+  // قطعش کنه (خطای ۵۲۲ مبهم). با AbortController سریع‌تر (۱۰ ثانیه) و با
+  // پیام روشن fail می‌شیم تا worker.js زودتر بفهمه FIDS جواب نداده.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000);
+
   try {
-    const upstream = await fetch(target, { headers: FETCH_HEADERS });
+    const upstream = await fetch(target, { headers: FETCH_HEADERS, signal: controller.signal });
     const html = await upstream.text();
     res.status(upstream.ok ? 200 : upstream.status);
     res.set('content-type', 'text/html; charset=utf-8');
     res.send(html);
   } catch (err) {
-    res.status(502).json({ error: String(err) });
+    const isTimeout = err && err.name === 'AbortError';
+    res.status(504).json({ error: isTimeout ? 'timeout fetching fids.airport.ir (>10s)' : String(err) });
+  } finally {
+    clearTimeout(timeoutId);
   }
 });
 
