@@ -144,6 +144,47 @@ function cityToCode(cityRaw) {
   return clean;
 }
 
+// ------------------------------------------------------------------
+// تشخیص نشتی خاموش داده (بخش ۱.۳ گزارش فنی): وقتی متن وضعیت خام با هیچ
+// الگوی STATUS_MAP مچ نشه، پرواز 'unknown' می‌مونه و در logCompletedFlights
+// برای همیشه بی‌صدا کنار گذاشته می‌شه — بدون خطا، بدون لاگ. این تابع
+// (مثل logUnmappedCity) شمارنده‌ی هر متنِ نگاشت‌نشده رو به‌ازای فرودگاه
+// در KV نگه می‌داره تا با یک کوئری روی کلیدهای `unknown_status:*` بشه
+// دید کدوم فرودگاه/کدوم عبارت بیشترین نشتی رو داره — مثلاً اگه مهرآباد
+// (THR) نسبت unknown بالاتری از بقیه داشته باشه، یعنی قالب HTML یا
+// عبارات وضعیتش با رجکس‌های فعلی فرق داره.
+async function logUnknownStatus(iata, rawStatus) {
+  try {
+    const clean = (rawStatus || '(خالی)').trim() || '(خالی)';
+    const key = `unknown_status:${iata}:${clean}`;
+    const raw = await kv.get(key);
+    const count = raw ? (parseInt(raw, 10) || 0) + 1 : 1;
+    await kv.put(key, String(count));
+  } catch {
+    // لاگ‌کردن نباید هیچ‌وقت پایپ‌لاین اصلی داده رو بشکنه.
+  }
+}
+
+// شمارش خام تعداد ردیف هر بخش (بدون فیلتر/مپینگ) برای هر فرودگاه در هر
+// اجرا — برای تشخیص حالت «سلکتور کلاً می‌شکنه» (۰ ردیف در یک بخش که
+// معمولاً باید ده‌ها ردیف داشته باشه)، جدا از حالت «بعضی وضعیت‌ها مچ
+// نمی‌شن» که logUnknownStatus پوششش می‌ده. فقط آخرین مقدار نگه داشته
+// می‌شه (overwrite)، نه تجمیعی — این یک health snapshot لحظه‌ایه.
+async function logSectionRowCounts(iata, fidsData) {
+  try {
+    const counts = {
+      arrivals_domestic: (fidsData.arrivals_domestic || []).length,
+      departures_domestic: (fidsData.departures_domestic || []).length,
+      arrivals_international: (fidsData.arrivals_international || []).length,
+      departures_international: (fidsData.departures_international || []).length,
+      checked_at: new Date().toISOString(),
+    };
+    await kv.put(`fids_row_diag:${iata}`, JSON.stringify(counts));
+  } catch {
+    // همین‌جوری، تشخیصیه، نباید مسیر اصلی رو بشکنه.
+  }
+}
+
 // div id -> [کلید دسته‌بندی، نقش ستون شهر]
 const TAB_MAP = {
   input: ['arrivals_domestic', 'origin'],
@@ -273,12 +314,13 @@ const STATUS_MAP = [
   [/پرواز\s*کرد|اقلاع\s*کرد|برخاست/, 'active'],
 ];
 
-function mapStatus(raw) {
+function mapStatus(raw, iata) {
   if (!raw) return 'unknown';
   const clean = raw.trim();
   for (const [re, mapped] of STATUS_MAP) {
     if (re.test(clean)) return mapped;
   }
+  if (iata) logUnknownStatus(iata, clean); // fire-and-forget — بخش ۱.۳
   return 'unknown';
 }
 
@@ -377,7 +419,7 @@ export function fidsToAviationstackShape(fidsData, myIata) {
         airline: { name: row.airline || 'Unknown', iata: row.airline_code || '', icao: '' },
         departure: dep,
         arrival: arr,
-        flight_status: mapStatus(row.status),
+        flight_status: mapStatus(row.status, myIata),
         _fids_raw_status: row.status,
       });
     }
@@ -390,5 +432,6 @@ export async function fetchAirportViaFids(iata) {
   const fidsId = IATA_TO_FIDS_ID[iata];
   if (!fidsId) throw new Error(`No fids coverage for ${iata} (use aviationstack fallback)`);
   const data = await fetchFidsAirport(fidsId);
+  logSectionRowCounts(iata, data); // fire-and-forget — بخش ۱.۳، تشخیص شکستن کامل سلکتور
   return fidsToAviationstackShape(data, iata);
 }

@@ -453,9 +453,10 @@ export async function aggregateDailyStats(date) {
     a.delaySum += g.delaySum;
     a.delaySamples += g.delaySamples;
     if (g.airlineName) a.airlineName = g.airlineName;
-    if (!a.routes[route]) a.routes[route] = { total: 0, onTime: 0, cancelled: 0 };
+    if (!a.routes[route]) a.routes[route] = { total: 0, onTime: 0, delayed: 0, cancelled: 0 };
     a.routes[route].total += g.total;
     a.routes[route].onTime += g.onTime;
+    a.routes[route].delayed += g.delayed;
     a.routes[route].cancelled += g.cancelled;
   }
 
@@ -579,17 +580,29 @@ export async function updateRollingScores() {
 
     const completed = total - cancelled;
 
+    // مخرج درصد به‌موقعی باید delaySamples (=onTime+delayed) باشه، نه
+    // completed (=onTime+delayed+noTelemetry). noTelemetry یعنی «داده‌ی
+    // تاخیر نداریم» — نه دیرکرد، مجهول. قبلاً با completed در مخرج، هر
+    // پروازِ بدون‌تله‌متری مثل یک «دیرکرد» رفتار می‌شد و امتیازِ
+    // ایرلاین/مسیرهایی که پوشش داده‌شون ناقصه، بدون ربط به عملکرد واقعی‌شون
+    // به‌طور مصنوعی پایین می‌اومد. avg_delay_minutes چند خط پایین‌تر از اول
+    // درست با delaySamples محاسبه می‌شد؛ این‌جا هم‌راستا شد.
     const value = {
       insufficient_data: total < MIN_SAMPLE_SIZE,
       reason: total < MIN_SAMPLE_SIZE ? `فقط ${total} پرواز در ${windowDays} روز اخیر ثبت شده` : null,
-      score_percent: (total >= MIN_SAMPLE_SIZE && completed > 0) ? Math.round((onTime / completed) * 1000) / 10 : null,
+      score_percent: (total >= MIN_SAMPLE_SIZE && delaySamples > 0) ? Math.round((onTime / delaySamples) * 1000) / 10 : null,
       // بازه‌ی اطمینان آماری (حد پایین Wilson score): با نمونه‌ی کم، یک عدد
       // قطعی مثل «۸۰٪» گمراه‌کننده‌ست (می‌تونه از ۴ پرواز از ۵ باشه). این
       // عدد «حداقل اعتمادپذیری قابل‌دفاع آماری» رو نشون می‌ده و خودش با
       // نمونه‌ی کم پایین می‌افته، بدون این‌که مجبور باشیم مسیر رو کلاً
-      // بی‌عدد نشون بدیم.
-      confidence_low_percent: completed > 0 ? wilsonLowerBound(onTime, completed) : null,
+      // بی‌عدد نشون بدیم. n اینجا هم delaySamples است، نه completed.
+      confidence_low_percent: delaySamples > 0 ? wilsonLowerBound(onTime, delaySamples) : null,
       all_cancelled: completed === 0,
+      // نسبت پروازهای بدون داده‌ی تاخیر به کل پروازهای غیرکنسلی — برای
+      // این‌که در UI بشه فرق گذاشت بین «امتیاز پایین چون واقعاً دیرکرد
+      // داشته» و «امتیاز نامعلوم چون تله‌متری‌مون برای این مسیر/ایرلاین
+      // ناقصه» (مثلاً مشکل پارس یک فرودگاه خاص).
+      no_telemetry_rate: completed > 0 ? Math.round((noTelemetry / completed) * 1000) / 10 : 0,
       avg_delay_minutes: delaySamples > 0 ? Math.round((delaySum / delaySamples) * 10) / 10 : 0,
       cancellation_rate: total > 0 ? Math.round((cancelled / total) * 1000) / 10 : 0,
       completed_flights: completed,
@@ -656,9 +669,13 @@ function addLeaderboardAcc(dst, src) {
   dst.delaySamples += src.delaySamples;
   if (src.airlineName) dst.airlineName = src.airlineName;
   for (const [route, r] of Object.entries(src.routes)) {
-    if (!dst.routes[route]) dst.routes[route] = { total: 0, onTime: 0, cancelled: 0 };
+    // 'delayed' هم نگه داشته می‌شه (نه فقط total/onTime/cancelled) تا پایین‌تر
+    // بشه on_time_rate هر مسیر رو با مخرج onTime+delayed حساب کرد، نه با
+    // total-cancelled که noTelemetry رو هم قاطی می‌کنه.
+    if (!dst.routes[route]) dst.routes[route] = { total: 0, onTime: 0, delayed: 0, cancelled: 0 };
     dst.routes[route].total += r.total;
     dst.routes[route].onTime += r.onTime;
+    dst.routes[route].delayed += (r.delayed || 0);
     dst.routes[route].cancelled += r.cancelled;
   }
 }
@@ -691,9 +708,10 @@ async function buildLeaderboardAccumulatorFromFullHistory() {
       a.noTelemetry += (s.no_telemetry_count || 0); // اسناد قدیمی این فیلد را ندارند
       if (s.airline_name) a.airlineName = s.airline_name;
 
-      if (!a.routes[route]) a.routes[route] = { total: 0, onTime: 0, cancelled: 0 };
+      if (!a.routes[route]) a.routes[route] = { total: 0, onTime: 0, delayed: 0, cancelled: 0 };
       a.routes[route].total += s.total_flights;
       a.routes[route].onTime += s.on_time_count;
+      a.routes[route].delayed += (s.delayed_count || 0);
       a.routes[route].cancelled += s.cancelled_count;
     }
     cursor = list.list_complete ? undefined : list.cursor;
@@ -741,10 +759,14 @@ export async function updateLeaderboardStats(date, todayByAirline) {
 
     const completed = a.total - a.cancelled;
 
+    // مخرج onTime/(onTime+delayed) نه onTime/completed — completed شامل
+    // noTelemetry هم می‌شه که «مجهول»ه، نه «دیرکرد». همون اصلاحی که در
+    // updateRollingScores روی score_percent اعمال شد، اینجا هم برای کارنامه
+    // و پرتاخیرترین مسیرها اعمال شد.
     const routes = Object.entries(a.routes)
       .map(([route, r]) => {
-        const routeCompleted = r.total - r.cancelled;
-        return { route, total: r.total, on_time_rate: routeCompleted ? Math.round((r.onTime / routeCompleted) * 1000) / 10 : 0 };
+        const routeDelaySamples = r.onTime + r.delayed;
+        return { route, total: r.total, on_time_rate: routeDelaySamples ? Math.round((r.onTime / routeDelaySamples) * 1000) / 10 : 0 };
       })
       .filter(r => r.total >= 2)
       .sort((x, y) => x.on_time_rate - y.on_time_rate)
@@ -755,11 +777,12 @@ export async function updateLeaderboardStats(date, todayByAirline) {
       airline_name: a.airlineName,
       sample_size: a.total,
       completed_flights: completed,
-      on_time_rate: completed > 0 ? Math.round((a.onTime / completed) * 1000) / 10 : 0,
+      on_time_rate: a.delaySamples > 0 ? Math.round((a.onTime / a.delaySamples) * 1000) / 10 : 0,
       avg_delay_minutes: a.delaySamples > 0 ? Math.round((a.delaySum / a.delaySamples) * 10) / 10 : 0,
       cancellation_rate: a.total > 0 ? Math.round((a.cancelled / a.total) * 1000) / 10 : 0,
       delayed_count: a.delayed,
       no_telemetry_count: a.noTelemetry,
+      no_telemetry_rate: completed > 0 ? Math.round((a.noTelemetry / completed) * 1000) / 10 : 0,
       routes
     });
   }

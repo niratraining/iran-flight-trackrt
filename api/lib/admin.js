@@ -33,10 +33,35 @@ async function buildAdminData() {
   const airportStats = [];
   for (const a of ALL_AIRPORTS) {
     const lastRun = await kv.get(`last_run:${a.iata}`);
-    airportStats.push({ iata: a.iata, name: a.name, group: a.group, lastRun: lastRun || '—' });
+    const rowDiagRaw = await kv.get(`fids_row_diag:${a.iata}`);
+    let rowDiag = null;
+    if (rowDiagRaw) {
+      try { rowDiag = JSON.parse(rowDiagRaw); } catch { rowDiag = null; }
+    }
+    airportStats.push({ iata: a.iata, name: a.name, group: a.group, lastRun: lastRun || '—', rowDiag });
   }
 
-  return { airportStats };
+  // ۲۰ تای اول بر اساس تعداد تکرار — برای دیدن این‌که کدوم فرودگاه/کدوم
+  // عبارت وضعیت بیشترین نشتی رو داره (بخش ۱.۳ گزارش فنی).
+  const unknownStatuses = [];
+  let cursor;
+  do {
+    const list = await kv.list({ prefix: 'unknown_status:', cursor });
+    for (const item of list.keys) {
+      const raw = await kv.get(item.name);
+      const count = parseInt(raw, 10) || 0;
+      // unknown_status:{iata}:{متن خام} — متن خام خودش می‌تونه ':' داشته باشه، پس فقط دو تیکه‌ی اول جدا می‌شه
+      const rest = item.name.slice('unknown_status:'.length);
+      const sep = rest.indexOf(':');
+      const iata = sep === -1 ? rest : rest.slice(0, sep);
+      const text = sep === -1 ? '' : rest.slice(sep + 1);
+      unknownStatuses.push({ iata, text, count });
+    }
+    cursor = list.list_complete ? undefined : list.cursor;
+  } while (cursor);
+  unknownStatuses.sort((x, y) => y.count - x.count);
+
+  return { airportStats, unknownStatuses: unknownStatuses.slice(0, 20) };
 }
 
 function renderLoginPage() {
@@ -108,13 +133,27 @@ function renderLoginPage() {
 }
 
 function renderAdminPage(data, token) {
-  const airportRows = data.airportStats.map(a => `
+  const airportRows = data.airportStats.map(a => {
+    const d = a.rowDiag;
+    const rowSummary = d
+      ? `و:${d.arrivals_domestic} خ:${d.departures_domestic} و‌ب:${d.arrivals_international} خ‌ب:${d.departures_international}`
+      : '—';
+    return `
       <tr>
         <td>${a.name}</td>
         <td>${a.iata}</td>
         <td>${a.lastRun}</td>
+        <td title="ورودی‌داخلی / خروجی‌داخلی / ورودی‌بین‌الملل / خروجی‌بین‌الملل">${rowSummary}</td>
         <td><button class="refresh-btn" data-airport="${a.iata}">بروزرسانی الان</button></td>
-      </tr>`).join('');
+      </tr>`;
+  }).join('');
+
+  const unknownRows = (data.unknownStatuses || []).map(u => `
+      <tr>
+        <td>${u.iata}</td>
+        <td>${u.text}</td>
+        <td>${u.count}</td>
+      </tr>`).join('') || '<tr><td colspan="3">هیچ وضعیت نگاشت‌نشده‌ای ثبت نشده</td></tr>';
 
   return `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -208,10 +247,26 @@ function renderAdminPage(data, token) {
           <th>فرودگاه</th>
           <th>کد</th>
           <th>آخرین بروزرسانی</th>
+          <th>تعداد ردیف خام (آخرین fetch)</th>
           <th></th>
         </tr>
       </thead>
       <tbody>${airportRows}</tbody>
+    </table>
+  </div>
+
+  <h2>وضعیت‌های نگاشت‌نشده (بخش ۱.۳ گزارش فنی)</h2>
+  <p class="subtitle">هر ردیف یعنی این متن خام روی تابلوی این فرودگاه هیچ‌کدام از الگوهای STATUS_MAP را مچ نکرده و پرواز برای همیشه بی‌صدا از آمار کنار گذاشته شده. تعداد بالا برای یک فرودگاه/عبارت خاص، نشانه‌ی نیاز به افزودن الگوی جدید به STATUS_MAP است.</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>فرودگاه</th>
+          <th>متن خام وضعیت</th>
+          <th>تعداد</th>
+        </tr>
+      </thead>
+      <tbody>${unknownRows}</tbody>
     </table>
   </div>
 
