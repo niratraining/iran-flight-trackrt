@@ -222,23 +222,25 @@ async function main() {
   }, { timezone: 'Asia/Tehran' });
 
   // ------------------------------------------------------------------
-  // فچ خام هر ۱۵ دقیقه — فقط trackAirports (بدون aggregateDailyStats/
-  // updateRollingScores که فول‌اسکن مونگو می‌زنن). فقط کش /api/flights
-  // رو پاک می‌کنه، پس جدول/وضعیت زنده زود به‌روز می‌شه بدون فشار اضافه
-  // روی دیتابیس. aviationstack حذف شده، پس محدودیت کوتا نداریم؛
-  // فرودگاه‌های بدون پوشش FIDS (فعلاً IKA, KIH, ZBR) فقط با ۰ پرواز
-  // 'ok' برمی‌گردن، نه خطا.
+  // فچ خام هر ۲ ساعت (قبلاً هر ۱۵ دقیقه بود؛ چون هدف فعلاً آرشیو ساعت
+  // اعلام‌شده/تأخیره نه نمایش زنده، و برنامه‌ی پروازی لحظه‌ای اعلام و
+  // حذف نمی‌شه، فرکانس کم شد تا فشار روی api و fids-relay در لیارا
+  // کمتر بشه) — فقط trackAirports (بدون
+  // aggregateDailyStats/updateRollingScores که فول‌اسکن مونگو می‌زنن).
+  // فقط کش /api/flights رو پاک می‌کنه. aviationstack حذف شده، پس
+  // محدودیت کوتا نداریم؛ فرودگاه‌های بدون پوشش FIDS (فعلاً IKA, KIH,
+  // ZBR) فقط با ۰ پرواز 'ok' برمی‌گردن، نه خطا.
   let rawRunning = false;
-  cron.schedule('*/15 * * * *', async () => {
+  cron.schedule('0 */2 * * *', async () => {
     if (rawRunning) return;
     rawRunning = true;
-    console.log('Running 15-minute raw flight refresh...');
+    console.log('Running 2-hourly raw flight refresh...');
     try {
       await refreshFlightsOnly(ALL_AIRPORTS.map(a => a.iata));
       cacheDelete('/api/flights');
-      console.log('15-minute raw flight refresh finished.');
+      console.log('2-hourly raw flight refresh finished.');
     } catch (err) {
-      console.error('15-minute raw flight refresh failed:', err);
+      console.error('2-hourly raw flight refresh failed:', err);
     } finally {
       rawRunning = false;
     }
