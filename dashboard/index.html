@@ -2252,15 +2252,41 @@ let heatNodes = [];
 let heatActiveIdx = 0;
 
 /* ---------- data helpers ----------
-   هماهنگ با worker.js: بدون دوره ارفاق (grace period) — فقط dep_delay ملاک است.
-   dep_delay <= 0 یعنی به‌موقع؛ حتی ۱ دقیقه بیشتر از صفر یعنی تاخیردار.
-   (نگاه کنید به worker.js: «on-time definition (no grace period)») */
+   هماهنگ با api/lib/flights.js (resolveDelay + ON_TIME_GRACE_MINUTES) —
+   قبلاً این‌جا یک تعریفِ جدا و ناهم‌خوان با بک‌اند بود (بدون گریس، فقط
+   dep_delay، و null->۰ که یعنی پروازهای هنوز‌نپریده هم «به‌موقع» نشون داده
+   می‌شدن). حالا دقیقاً همون منطق بک‌اند: اولویت با arr_delay (تجربه‌ی واقعی
+   مسافر)، دوره‌ی ارفاق ۱۵ دقیقه‌ای، و «داده نداریم» یعنی nullنه صفر. */
+const ON_TIME_GRACE_MINUTES = 15;
+
+// همون اولویت resolveDelay() در بک‌اند: اول arr_delay (نشست/تجربه‌ی واقعی
+// مسافر)، بعد dep_delay (فقط وقتی هیچ‌وقت تابلوی ورودیِ مقصد رو نداریم).
+function resolveDelayFront(f){
+  if (typeof f.arr_delay === 'number') return f.arr_delay;
+  if (typeof f.dep_delay === 'number') return f.dep_delay;
+  return null;
+}
+
+// چهار خروجی ممکن، دقیقاً هم‌راستا با چیپ‌های فیلتر وضعیت در UI
+// (#statusChips: on-time / delayed / cancelled / unknown):
+//   - 'cancelled'  : پرواز کنسل شده
+//   - 'delayed'    : یا تابلوی زنده همین الان می‌گه «تاخیر» (status='delayed')،
+//                    یا نشسته و تاخیرش بیش از دوره‌ی ارفاق بوده
+//   - 'on-time'    : واقعاً نشسته (status='landed') و تاخیرش در بازه‌ی ارفاق بوده
+//   - 'unknown'    : پرواز هنوز کامل نشده (scheduled/checkin/gate_closed/active)
+//                    یا نشسته ولی هیچ داده‌ی تاخیری نداریم (بدون تله‌متری) —
+//                    این‌ها هیچ‌وقت نباید پیش‌فرض «به‌موقع» شمرده بشن.
 function classify(f){
   if (f.status === 'cancelled') return 'cancelled';
-  const delay = typeof f.dep_delay === 'number' ? f.dep_delay : 0;
-  return delay > 0 ? 'delayed' : 'on-time';
+  if (f.status === 'landed') {
+    const delay = resolveDelayFront(f);
+    if (delay === null) return 'unknown';
+    return delay > ON_TIME_GRACE_MINUTES ? 'delayed' : 'on-time';
+  }
+  if (f.status === 'delayed') return 'delayed'; // تابلوی زنده همین الان اعلام تاخیر کرده
+  return 'unknown'; // هنوز پرواز نکرده یا وضعیتش نامعلومه — نه on-time
 }
-function delayOf(f){ return typeof f.dep_delay === 'number' ? f.dep_delay : 0; }
+function delayOf(f){ const d = resolveDelayFront(f); return typeof d === 'number' ? d : 0; }
 // همیشه با timeZone صریح 'Asia/Tehran' نمایش بده — وگرنه اگه کاربر از
 // خارج ایران یا با تایم‌زون دیگه‌ای باز کنه، ساعت نمایشی اشتباه می‌شه
 // چون بدون این گزینه، مرورگر از تایم‌زون خودِ دستگاه استفاده می‌کنه.
@@ -2318,11 +2344,14 @@ function actualDepTime(f){
     const t = fmtTime(iso);
     if (t !== '—') return t;
   }
-  const delay = delayOf(f);
-  if (delay > 0 && f.dep_scheduled) {
+  // اینجا عمداً از delayOf() عمومی (که اولویتش arr_delay است) استفاده
+  // نمی‌کنیم — چون داریم ساعت خروج را تخمین می‌زنیم، تاخیر نشست ربطی به
+  // جابه‌جایی ساعت خروج ندارد؛ فقط dep_delay مناسب این محاسبه است.
+  const depDelay = typeof f.dep_delay === 'number' ? f.dep_delay : 0;
+  if (depDelay > 0 && f.dep_scheduled) {
     const d = new Date(f.dep_scheduled);
     if (!isNaN(d)) {
-      d.setMinutes(d.getMinutes() + delay);
+      d.setMinutes(d.getMinutes() + depDelay);
       return d.toLocaleTimeString('fa-IR', { hour:'2-digit', minute:'2-digit', timeZone: TEHRAN_TZ });
     }
   }
@@ -2789,8 +2818,15 @@ function renderStatStrip(flights){
   const total = flights.length;
   const airlines = new Set(flights.map(f => f.airline)).size;
   const routes = new Set(flights.map(f => `${f.dep_iata}-${f.arr_iata}`)).size;
-  const delayed = flights.filter(f => classify(f) === 'delayed').length;
-  const rate = total ? Math.round(delayed / total * 100) : 0;
+  const classified = flights.map(classify);
+  const delayed = classified.filter(c => c === 'delayed').length;
+  const onTime = classified.filter(c => c === 'on-time').length;
+  // مخرج نرخ تاخیر فقط پروازهای «سرنوشت‌مشخص» (تاخیردار یا به‌موقع) است،
+  // نه کل پروازهای رصدشده — وگرنه پروازهای هنوز‌نپریده/بدون‌داده مخرج را
+  // بزرگ می‌کنند و نرخ را کاذب پایین نشان می‌دهند (همان مشکلی که در فرمول
+  // امتیاز بک‌اند هم بود، اینجا هم برای stat strip اصلاح شد).
+  const concluded = delayed + onTime;
+  const rate = concluded ? Math.round(delayed / concluded * 100) : 0;
 
   document.getElementById('statTotal').textContent = toFa(total);
   document.getElementById('statTotalDelay').innerHTML = delayedSuffix(delayed);
