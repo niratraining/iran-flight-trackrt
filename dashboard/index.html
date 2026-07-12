@@ -946,6 +946,24 @@
       font-size:15.5px; font-weight:800; color:var(--ink); letter-spacing:0.01em;
     }
     .fr-arrow{ color:var(--ink-faint); font-weight:500; padding:0 1px; }
+    /* فلش گرافیکی برای مسیرهای فارسی (مبدأ/مقصد): برخلاف کاراکتر یونیکد
+       «→» که بعضی مرورگرها/فونت‌ها توی متن راست‌به‌چپ خودکار آینه‌ش
+       می‌کنن و بعضی نه (نتیجه: جهتش غیرقابل‌پیش‌بینی می‌شد)، این یه
+       مثلث CSS خالصه که همیشه به چپ اشاره می‌کنه — یعنی از مبدأ (که با
+       display:inline-flex همیشه راست‌ترین/اولین آیتمه) به‌سمت مقصد. */
+    .route-fa{ display:inline-flex; align-items:center; gap:5px; vertical-align:middle; }
+    .route-fa-arrow{
+      width:0; height:0; flex:none;
+      border-top:4px solid transparent; border-bottom:4px solid transparent;
+      border-right:7px solid var(--ink-faint);
+    }
+    /* داخل td.mono/.cell-mono که direction:ltr روشونه (کدهای پرواز/زمان
+       باید چپ‌به‌راست بمونن)، مبدأ همون اولین آیتم DOM ولی این‌بار
+       چپ‌ترینه، پس فلش هم باید برعکس (رو به راست) بشه که هنوز به مقصد
+       اشاره کنه، نه برگرده به مبدأ. */
+    .route-fa-arrow.ltr{
+      border-right:none; border-left:7px solid var(--ink-faint);
+    }
     tbody td[data-label="وضعیت"]{ order:4; margin-inline-start:auto; flex-shrink:0; }
     tbody td[data-label="وضعیت"] .tag{ padding:3px 9px; font-size:9.5px; }
 
@@ -1859,7 +1877,31 @@ const AIRPORT_FA = {
 // نام‌های فارسی خوانا برمی‌گردونه (مثلاً «مشهد → مهرآباد»)؛ اگه کدی توی
 // AIRPORT_FA پیدا نشه، همون متن اصلی (که خودش می‌تونه از قبل فارسی باشه)
 // بدون تغییر نگه داشته می‌شه.
-function faRoute(route){
+function faRoute(route, opts){
+  if (!route) return route;
+  const parts = String(route).split('-').map(seg => {
+    const key = seg.trim().toUpperCase();
+    return AIRPORT_FA[key] || seg.trim();
+  });
+  if (parts.length < 2) return parts.join('');
+  // قبلاً اینجا فقط با ' → ' (کاراکتر یونیکد فلش) به هم وصل می‌شدن؛ چون
+  // این رشته وسط متن فارسیه (راست‌به‌چپ)، بعضی مرورگر/فونت‌ها این فلش رو
+  // خودکار آینه می‌کردن (→ می‌شد ←) و بعضی نه — نتیجه غیرقابل‌پیش‌بینی و
+  // گاهی برعکسِ جهت واقعی مسیر به‌نظر می‌رسید. حالا هر شهر توی <bdi>
+  // جدا (نظمش دست‌نخورده می‌مونه) و بینشون یه فلش CSS خالص (route-fa-arrow)
+  // که جهتش با CSS ثابته، نه با بایدای مرورگر. تو ظرف‌های عادی (راست‌به‌چپ)
+  // مبدأ راست‌ترین/اولین آیتمه و فلش رو به چپ اشاره می‌کنه؛ تو سلول‌های
+  // .mono/.cell-mono که عمداً چپ‌به‌راستن (کد پرواز/زمان)، ltr:true بده
+  // تا هم مبدأ چپ‌ترین بمونه هم فلش برعکس (رو به راست) بشه.
+  const arrowCls = opts && opts.ltr ? 'route-fa-arrow ltr' : 'route-fa-arrow';
+  const dest = parts.slice(1).map(p => `<bdi>${p}</bdi>`).join(`<span class="${arrowCls}" aria-hidden="true"></span>`);
+  return `<span class="route-fa"><bdi>${parts[0]}</bdi><span class="${arrowCls}" aria-hidden="true"></span>${dest}</span>`;
+}
+
+// نسخه‌ی متن‌خالص faRoute — برای جاهایی مثل لیبل نمودار Chart.js که روی
+// <canvas> نوشته می‌شن و HTML/بایدای مرورگر روشون اعمال نمی‌شه (پس همون
+// تگ‌های <span>/<bdi> بالا رو به‌جای رندر، عیناً به‌صورت متن نشون می‌دادن).
+function faRoutePlain(route){
   if (!route) return route;
   return String(route).split('-').map(seg => {
     const key = seg.trim().toUpperCase();
@@ -3963,7 +4005,7 @@ function flightDetailAppendix(flights){
       <td class="num">${fmtTime(f.dep_scheduled)}</td>
       <td>${f.airline || 'نامشخص'}</td>
       <td class="mono">${f.flight_iata || '—'}</td>
-      <td class="mono">${faRoute(f.dep_iata + '-' + f.arr_iata)}</td>
+      <td class="mono">${faRoute(f.dep_iata + '-' + f.arr_iata, {ltr:true})}</td>
       <td class="num">${f.status === 'cancelled' ? '—' : (toFa(delayOf(f)) + '′')}</td>
       <td>${f.status === 'cancelled' ? 'لغوشده' : (delayOf(f) > 0 ? 'تاخیردار' : 'به‌موقع')}</td>
     </tr>`).join('');
@@ -4098,12 +4140,12 @@ async function generateReportPreview(){
         <td class="num">${fmtTime(f.dep_scheduled)}</td>
         <td>${f.airline || '—'}</td>
         <td class="mono">${f.flight_iata || '—'}</td>
-        <td class="mono">${faRoute(f.dep_iata + '-' + f.arr_iata)}</td>
+        <td class="mono">${faRoute(f.dep_iata + '-' + f.arr_iata, {ltr:true})}</td>
         <td>${repBar(delayOf(f), maxDelay)}</td>
       </tr>`).join('')}</tbody></table>`;
     const top = list.slice(0, 10);
     chartKind = 'bar'; chartTitle = 'میزان تاخیر پرتاخیرترین پروازها (دقیقه)'; chartAxis = 'دقیقه تاخیر';
-    chartLabels = top.map(f => f.flight_iata || faRoute(f.dep_iata + '-' + f.arr_iata)); chartValues = top.map(f => Math.round(delayOf(f)));
+    chartLabels = top.map(f => f.flight_iata || faRoutePlain(f.dep_iata + '-' + f.arr_iata)); chartValues = top.map(f => Math.round(delayOf(f)));
 
   } else if (reportType === 'trend') {
     titleFa = 'روند روزانه تاخیر';
@@ -4148,7 +4190,7 @@ async function generateReportPreview(){
       </tr></thead><tbody>${routes.map((r, i) => `
         <tr>
           <td class="num">${toFa(i + 1)}</td>
-          <td class="mono">${faRoute(r.route)}</td>
+          <td class="mono">${faRoute(r.route, {ltr:true})}</td>
           <td class="num">${toFa(r.total)}</td>
           <td class="num">${toFa(r.onTimeRate.toFixed(0))}٪</td>
           <td class="num">${toFa(Math.round(r.avgDelay))}′</td>
@@ -4162,12 +4204,12 @@ async function generateReportPreview(){
           <td class="num">${toFa(i + 1)}</td>
           <td>${fmtDate(f.dep_scheduled)}</td>
           <td class="mono">${f.flight_iata || '—'}</td>
-          <td class="mono">${faRoute(f.dep_iata + '-' + f.arr_iata)}</td>
+          <td class="mono">${faRoute(f.dep_iata + '-' + f.arr_iata, {ltr:true})}</td>
           <td class="num">${toFa(delayOf(f))}′</td>
         </tr>`).join('')}</tbody></table>` : ''}`;
     const top = routes.slice(0, 10);
     chartKind = 'bar'; chartTitle = `نرخ به‌موقع‌بودن ${airline} به تفکیک مسیر (٪)`; chartAxis = 'درصد به‌موقع';
-    chartLabels = top.map(r => faRoute(r.route)); chartValues = top.map(r => Math.round(r.onTimeRate));
+    chartLabels = top.map(r => faRoutePlain(r.route)); chartValues = top.map(r => Math.round(r.onTimeRate));
   }
 
   const headHtml = buildDocHead(titleFa, TYPE_LABELS[reportType] || titleFa, meta);
