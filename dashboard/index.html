@@ -842,6 +842,38 @@
   }
   .delay-badge-icon{ width:11px; height:11px; flex-shrink:0; }
 
+  /* clickable variant of delay-badge (used in the bubble-chart detail box) —
+     same look, plus hover lift so it reads as tappable, not just decorative */
+  .delay-badge-clickable{
+    border:none; font-family:'Vazirmatn', sans-serif; cursor:pointer;
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .delay-badge-clickable:hover, .delay-badge-clickable:focus-visible{
+    transform:translateY(-2px);
+    box-shadow:0 6px 14px rgba(225,55,47,0.42), inset 0 1px 0 rgba(255,255,255,0.18);
+    outline:none;
+  }
+  /* the "پرواز رصدشده" metric itself, made clickable to open the full list */
+  .pm-clickable{ cursor:pointer; border-radius:10px; padding:2px 4px; margin:-2px -4px; transition:background .15s ease; }
+  .pm-clickable:hover, .pm-clickable:focus-visible{ background:rgba(22,21,15,0.06); outline:none; }
+
+  /* scrollable per-airline flight list drawer (opened from the metric box) */
+  .flight-list-scroll{ max-height:336px; overflow-y:auto; border:1.5px solid var(--line); border-radius:14px; margin:6px 0 16px; }
+  .flight-list-row{ padding:10px 14px; border-bottom:1px dashed var(--line); }
+  .flight-list-row:last-child{ border-bottom:none; }
+  .flr-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px; }
+  .flr-route{ font-weight:700; font-size:13px; }
+  .flr-meta{ display:flex; flex-wrap:wrap; gap:10px; font-size:11.5px; color:var(--ink-faint); font-weight:600; }
+  .flight-list-report-note{
+    font-size:12px; color:var(--ink-soft); font-weight:600; line-height:1.9;
+    background:var(--cream); border:1.5px dashed var(--line); border-radius:14px; padding:12px 14px;
+  }
+  .flight-list-report-btn{
+    display:inline-flex; align-items:center; gap:6px; margin-top:8px;
+    background:var(--ink); color:#fff; border:none; border-radius:12px;
+    padding:9px 16px; font-family:'Vazirmatn', sans-serif; font-weight:800; font-size:12.5px; cursor:pointer;
+  }
+
   .pagination{ display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin-top:16px; }
   .pg-btn{
     min-width:36px; height:36px; padding:0 10px; border-radius:10px; border:1.5px solid var(--line);
@@ -2242,7 +2274,49 @@ const AIRLINE_LOGOS = {
   'سروش ایر': 'logos/soroush.svg',
   'تابان': 'logos/taban.svg',
   'وارش': 'logos/varesh.svg',
+  // این‌ها لوگوی محلی نداشتن؛ فعلاً مستقیم از همون CDN که فرستادی لینک دادم.
+  // اگه بعداً خواستی سرعت/پایداری بیشتر بشه، می‌تونی این فایل‌ها رو دانلود
+  // کنی و مثل بقیه توی پوشه logos/ بذاری و همین‌جا مسیرش رو عوض کنی.
+  'کارون': 'https://cdn.sepehr360.ir///Content/image//AirlineLogo_Svg/NV.svg?ts=637919108969400000',
+  'جی اسکای': 'https://cdn.sepehr360.ir///Content/image//AirlineLogo_Svg/ISP.svg?ts=638986109429800000',
+  'یزد ایر': 'https://cdn.sepehr360.ir///Content/image//AirlineLogo_Svg/DZD.svg?ts=638262268090930000',
+  'لاد ایر': 'https://cdn.sepehr360.ir///Content/image//AirlineLogo_Svg/LMB.svg?ts=639149451942570000',
 };
+
+// نام‌های جایگزین/کوتاه‌شده‌ای که گاهی روی تابلوی FIDS به‌جای نام کاملی که در
+// AIRLINE_LOGOS به‌عنوان کلید گذاشتیم می‌آد — مثلاً فرودگاه بعضی وقت‌ها فقط
+// «قشم» می‌نویسه نه «قشم ایر»، یا «نسیم» به‌جای «نسیم‌ایر» (که با نیم‌فاصله
+// نوشته شده). چون این‌ها کلید را کلمه‌به‌کلمه یکی نمی‌کردن، لوگو پیدا نمی‌شد
+// با این‌که هم فایل لوگو هم کلید اصلی از قبل وجود داشت. کلید = هرچی ممکنه
+// FIDS نشون بده، مقدار = همون کلید اصلی در AIRLINE_LOGOS بالا.
+const AIRLINE_LOGO_ALIASES = {
+  'قشم': 'قشم ایر',
+  'نسیم': 'نسیم‌ایر',
+  'نسیم ایر': 'نسیم‌ایر',
+  'سروش': 'سروش ایر',
+  'آسا جت': 'آساجت',
+  'لاد': 'لاد ایر',
+  'لادایرویز': 'لاد ایر',
+  'لاد ایرویز': 'لاد ایر',
+};
+
+// همه‌ی جاهایی که قبلاً مستقیم AIRLINE_LOGOS[name] صدا می‌شد، حالا از این
+// تابع استفاده می‌کنن: اول تطبیق دقیق، بعد نام جایگزین شناخته‌شده، و در آخر
+// یک تلاش آخر که فاصله/نیم‌فاصله رو نادیده می‌گیره (مثلاً «نسیم ایر» و
+// «نسیم‌ایر» رو یکی حساب می‌کنه) — تا هر جور نگارشی که فرودگاه به‌کار ببره،
+// اگه از نظر معنایی همون ایرلاینه، لوگوش پیدا بشه.
+function resolveAirlineLogo(name){
+  if (!name) return null;
+  if (AIRLINE_LOGOS[name]) return AIRLINE_LOGOS[name];
+  const aliasTarget = AIRLINE_LOGO_ALIASES[name];
+  if (aliasTarget && AIRLINE_LOGOS[aliasTarget]) return AIRLINE_LOGOS[aliasTarget];
+  const norm = s => s.replace(/[\s\u200c]/g, '');
+  const target = norm(name);
+  for (const key in AIRLINE_LOGOS) {
+    if (norm(key) === target) return AIRLINE_LOGOS[key];
+  }
+  return null;
+}
 
 let allFlights = [];
 let weekdayChartInstance = null;
@@ -2363,7 +2437,7 @@ function levelColor(level){
 }
 function airlineAvatarHtml(name, level, sizeClass){
   const color = levelColor(level);
-  const logoUrl = AIRLINE_LOGOS[name];
+  const logoUrl = resolveAirlineLogo(name);
   const initials = (name || '؟').trim().slice(0, 2);
   const inner = logoUrl
     ? `<img src="${logoUrl}" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -2680,7 +2754,7 @@ async function renderHeatmap(){
     const name = n.a.name;
     const initials = (name || '؟').trim().slice(0, 2);
     const color = heatColor(n.sev);
-    const logoUrl = AIRLINE_LOGOS[name];
+    const logoUrl = resolveAirlineLogo(name);
     const showPct = n.r > 44;
     const showName = n.r > 38;
     const avatarInner = logoUrl
@@ -2760,11 +2834,13 @@ function setHeatActive(idx){
   renderHeatDetail(heatNodes[idx].a);
 }
 
+let heatDetailAirlineName = null;
 function renderHeatDetail(a){
+  heatDetailAirlineName = a.name;
   const level = riskLevel(a.onTimeRate, a.cancelledRate);
   const reason = riskReason(a.onTimeRate, a.cancelledRate);
   const color = heatColor(severityScore(a));
-  const logoUrl = AIRLINE_LOGOS[a.name];
+  const logoUrl = resolveAirlineLogo(a.name);
   const initials = (a.name || '؟').trim().slice(0, 2);
   const avatarInner = logoUrl
     ? `<img src="${logoUrl}" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -2789,10 +2865,91 @@ function renderHeatDetail(a){
       <div><div class="pm-val num" style="color:${color};">${toFa(a.onTimeRate.toFixed(0))}٪</div><div class="pm-lbl">به‌موقع</div></div>
       <div><div class="pm-val num" style="color:${color};">${toFa(Math.round(a.avgDelay))}′</div><div class="pm-lbl">میانگین تاخیر</div></div>
       <div><div class="pm-val num" style="color:${color};">${toFa(a.cancelledRate.toFixed(0))}٪</div><div class="pm-lbl">نرخ لغو</div></div>
-      <div><div class="pm-val num" style="color:${color};">${toFa(a.total)}</div><div class="pm-lbl">پرواز رصدشده${delayedSuffix(a.delayed)}</div></div>
+      <div class="pm pm-clickable" role="button" tabindex="0" title="مشاهده فهرست کامل پروازهای رصدشده"
+           onclick="openAirlineFlightList(heatDetailAirlineName, false)"
+           onkeydown="if(event.key==='Enter')openAirlineFlightList(heatDetailAirlineName, false)">
+        <div class="pm-val num" style="color:${color};">${toFa(a.total)}</div>
+        <div class="pm-lbl">پرواز رصدشده${a.delayed ? `
+          <button type="button" class="delay-badge delay-badge-clickable" title="مشاهده فهرست پروازهای دارای تاخیر"
+                  onclick="event.stopPropagation(); openAirlineFlightList(heatDetailAirlineName, true)">
+            <svg class="delay-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+            ${toFa(a.delayed)} تاخیر
+          </button>` : ''}
+        </div>
+      </div>
     </div>
     <div class="heat-detail-routes-title">پرتاخیرترین مسیرهای ${a.name}:</div>
     ${routesHtml}`;
+}
+
+// فهرست کامل پروازهای رصدشده (یا فقط تاخیردارها) برای یک ایرلاین — با کلیک
+// روی «پرواز رصدشده» یا نشان قرمز «N تاخیر» توی کارت جزئیات باز می‌شه. از
+// همون bottomSheet عمومی (که پیشتر برای کارت ایرلاین/توضیح‌ها استفاده می‌شد)
+// دوباره‌استفاده می‌کنیم چون از قبل قابل‌اسکرول هست (max-height:82vh؛
+// overflow-y:auto) — نیازی به یک شیت جدا نبود.
+let flightListCurrentAirline = null;
+function openAirlineFlightList(airlineName, onlyDelayed){
+  if (!airlineName) return;
+  flightListCurrentAirline = airlineName;
+
+  let list = (allFlights || []).filter(f => f.airline === airlineName);
+  if (onlyDelayed) list = list.filter(f => classify(f) === 'delayed');
+  list = list.slice().sort((x, y) => new Date(y.dep_scheduled || 0) - new Date(x.dep_scheduled || 0));
+
+  const rowsHtml = list.length
+    ? list.map(f => {
+        const cls = classify(f);
+        const d = delayOf(f);
+        return `
+          <div class="flight-list-row">
+            <div class="flr-top">
+              <span class="flr-route cell-mono">${f.dep_iata || '—'} <span class="fr-arrow">→</span> ${f.arr_iata || '—'}</span>
+              ${statusTag(cls, f)}
+            </div>
+            <div class="flr-meta">
+              <span>${fmtWeekday(f.dep_scheduled)}، ${fmtDate(f.dep_scheduled)}</span>
+              <span class="num">${fmtTime(f.dep_scheduled)}</span>
+              <span class="cell-mono">${f.flight_iata || '—'}</span>
+              ${d > 0 ? `<span class="num" style="color:var(--red); font-weight:800;">${toFa(d)}′ تاخیر</span>` : ''}
+            </div>
+          </div>`;
+      }).join('')
+    : '<div class="empty-hint">پروازی با این فیلتر در داده‌های موجود این داشبورد رصد نشده است.</div>';
+
+  document.getElementById('bottomSheetBody').innerHTML = `
+    <div class="sheet-head" style="display:block;">
+      <div class="sheet-airline-name">${onlyDelayed ? 'پروازهای دارای تاخیر' : 'پروازهای رصدشده'} — ${airlineName}</div>
+      <div class="sheet-verdict-line" style="color:var(--ink-faint);">${toFa(list.length)} پرواز${onlyDelayed ? ' با تاخیر' : ''}، مرتب‌شده از جدیدترین</div>
+    </div>
+    <div class="drawer-pad">
+      <div class="flight-list-scroll">${rowsHtml}</div>
+      <div class="flight-list-report-note">
+        این فهرست فقط پروازهای موجود در داده‌ی همین داشبورده. برای یک گزارش رسمی و قابل‌چاپ با بازه‌ی زمانی دلخواه و آمار کامل این ایرلاین:
+        <br>
+        <button type="button" class="flight-list-report-btn" onclick="closeBottomSheet(); openAirlineReport(flightListCurrentAirline);">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 3v4a1 1 0 0 1-1 1H4M4 3h9l7 7v11H4z"/></svg>
+          رفتن به گزارش‌گیری حرفه‌ای
+        </button>
+      </div>
+    </div>`;
+
+  document.getElementById('bottomSheetOverlay').classList.add('open');
+  document.getElementById('bottomSheet').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+// شیت «ساخت گزارش حرفه‌ای» رو مستقیم روی نوع «گزارش یک ایرلاین» و همین
+// ایرلاین باز می‌کنه — کاربر فقط بازه‌ی زمانی رو انتخاب می‌کنه و پیش‌نمایش/
+// دانلود PDF می‌گیره، بدون این‌که دوباره از اول نوع گزارش و ایرلاین رو ست کنه.
+function openAirlineReport(airlineName){
+  openReportSheet();
+  const airlineBtn = document.querySelector('#repTypes .rep-type-card[data-type="airline"]');
+  if (airlineBtn) setReportType('airline', airlineBtn);
+  const airlineSel = document.getElementById('repAirline');
+  if (airlineSel && airlineName) {
+    const hasOption = [...airlineSel.options].some(o => o.value === airlineName);
+    if (hasOption) airlineSel.value = airlineName;
+  }
 }
 
 /* ---------- ticker ---------- */
