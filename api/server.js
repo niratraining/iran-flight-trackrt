@@ -36,7 +36,9 @@ app.disable('x-powered-by');
 // ------------------------------------------------------------------
 const DEFAULT_ORIGINS = [
   'https://iran-flight-trackrt-dashboard.nirahelp.workers.dev',
-  'https://flight-track.travellab.ir'
+  'https://flight-track.travellab.ir',
+  'https://travellab.ir',
+  'https://www.travellab.ir'
 ];
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
